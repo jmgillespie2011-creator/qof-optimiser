@@ -7,8 +7,9 @@ type IcbValue = Record<string, number>;
 type Pcn = { code: string; name: string; pct: number | null; listSize: number | null };
 type Practice = { code: string; name: string; pct: number | null };
 
-const ICB_GEOJSON =
-  "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Integrated_Care_Boards_April_2023_EN_BGC/FeatureServer/0/query?where=1%3D1&outFields=ICB23CD,ICB23CDH,ICB23NM&outSR=4326&f=geojson";
+// Bundled locally (public/icb.geojson) — the previous live ArcGIS query 400'd on a
+// non-existent field, which broke the map. Local load is also far faster.
+const ICB_GEOJSON = "/icb.geojson";
 
 function colour(v: number | null | undefined, lower: number, upper: number): string {
   if (v == null) return "#e2e8f0";
