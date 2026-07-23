@@ -43,8 +43,14 @@ export default async function IndicatorPage({ params }: { params: Promise<{ doma
     <div className="space-y-6">
       <Link href={`/domains/${domain}`} className="text-sm text-nhs-blue">← {ind?.domain_label}</Link>
       <div>
-        <h1 className="text-2xl font-bold">{code} · {ind?.title}</h1>
-        <p className="mt-1 text-slate-600">{ind?.description}</p>
+        <div className="kicker">{ind?.domain_label} · Indicator {code}</div>
+        <h1 className="mt-1 text-2xl font-bold">{ind?.title}</h1>
+        {ind?.description ? (
+          <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">What this indicator measures</div>
+            <p className="mt-1 text-sm leading-relaxed text-slate-700">{ind.description}</p>
+          </div>
+        ) : null}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-4">
