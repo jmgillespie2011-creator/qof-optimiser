@@ -35,7 +35,7 @@ export class AnthropicProvider implements LLMProvider {
   }
 
   async generate(opts: LLMRequest): Promise<LLMResponse> {
-    const outputConfig: Record<string, unknown> = { effort: "medium" };
+    const outputConfig: Record<string, unknown> = {};
     if (opts.responseFormat === "json") {
       if (!opts.jsonSchema) throw new Error("jsonSchema is required for JSON responses.");
       outputConfig.format = { type: "json_schema", schema: opts.jsonSchema };
@@ -44,13 +44,25 @@ export class AnthropicProvider implements LLMProvider {
     const res = await this.client.messages.create({
       model: this.model,
       max_tokens: opts.maxTokens,
-      thinking: { type: "adaptive" },
+      // Thinking off: the numbers and structure are pre-computed, the schema
+      // constrains the output, and adaptive thinking would eat the token budget
+      // and truncate the JSON. Keeps generation fast and reliable.
+      thinking: { type: "disabled" },
       output_config: outputConfig as any,
       // Static system prefix marked for prompt caching (§0.1). Practice-specific
       // data goes in the user turn, after the cached prefix.
       system: [{ type: "text", text: opts.systemPrompt, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content: opts.userContent }],
     });
+
+    // Surface truncation / refusals as clear errors instead of a downstream
+    // "invalid JSON" failure.
+    if (res.stop_reason === "max_tokens") {
+      throw new Error(`Output truncated at max_tokens (${opts.maxTokens}). Increase maxTokens.`);
+    }
+    if (res.stop_reason === "refusal") {
+      throw new Error("The model declined to generate this content.");
+    }
 
     const text = res.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")

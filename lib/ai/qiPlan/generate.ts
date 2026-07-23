@@ -38,7 +38,7 @@ export async function runQiPlanGeneration(args: {
       const res = await provider.generate({
         systemPrompt,
         userContent,
-        maxTokens: 8000,
+        maxTokens: 12000,
         responseFormat: "json",
         jsonSchema: QI_PLAN_SCHEMA,
       });
@@ -47,7 +47,7 @@ export async function runQiPlanGeneration(args: {
       try {
         parsed = JSON.parse(res.text);
       } catch {
-        lastErrors = ["Model output was not valid JSON."];
+        lastErrors = [`Model output was not valid JSON. First 200 chars: ${res.text.slice(0, 200)}`];
         userContent = buildUserContent(input) + `\n\nYour previous output was not valid JSON. Return only the JSON object.`;
         continue;
       }
