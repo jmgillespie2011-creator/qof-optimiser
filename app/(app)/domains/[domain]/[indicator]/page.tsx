@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getUserPractice, getIndicatorRows, CURRENT_YEAR } from "@/lib/qof/data";
+import { getUserPractice, getPracticeContext, getIndicatorRows, CURRENT_YEAR } from "@/lib/qof/data";
 import { gbp, RAG_TEXT } from "@/lib/qof/calc";
 import BenchmarkBars from "@/components/BenchmarkBars";
 import TrendChart from "@/components/TrendChart";
@@ -15,9 +15,14 @@ export default async function IndicatorPage({ params }: { params: Promise<{ doma
   const rows = await getIndicatorRows(practiceCode!);
   const row = rows.find((r) => r.indicator_code === code);
 
+  // Only the four rows this benchmark needs — your practice, its PCN, its ICB,
+  // and England. Without the ods_code filter the query returns every org in the
+  // country and Supabase's 1000-row cap drops the PCN/ICB/national rows.
+  const ctx = await getPracticeContext();
+  const benchCodes = [practiceCode, ctx.pcn, ctx.icb, "ENG"].filter(Boolean) as string[];
   const { data: ind } = await supabase.from("qof_indicator").select("*").eq("indicator_code", code).single();
   const { data: iy } = await supabase.from("qof_indicator_year").select("*").eq("indicator_code", code).eq("year", CURRENT_YEAR).single();
-  const { data: ach } = await supabase.from("qof_achievement").select("*").eq("indicator_code", code).eq("year", CURRENT_YEAR);
+  const { data: ach } = await supabase.from("qof_achievement").select("*").eq("indicator_code", code).eq("year", CURRENT_YEAR).in("ods_code", benchCodes);
   const { data: trend } = await supabase.from("qof_achievement").select("year,achievement_pct")
     .eq("indicator_code", code).eq("ods_code", practiceCode!).order("year", { ascending: true });
 

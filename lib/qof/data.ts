@@ -3,6 +3,21 @@ import { moneyAtRisk, pointsShortfall, ragFromPoints, rag, Rag } from "./calc";
 
 export const CURRENT_YEAR = process.env.NEXT_PUBLIC_QOF_YEAR || "2025/26";
 
+// Supabase caps a single select at ~1000 rows. This pages through a query
+// builder to return every matching row. Pass a factory so each page is a fresh
+// builder; it must apply a stable .order() for correct paging.
+export async function fetchAllRows<T = any>(makeQuery: (from: number, to: number) => any, pageSize = 1000): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await makeQuery(from, from + pageSize - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    out.push(...(data as T[]));
+    if (data.length < pageSize) break;
+  }
+  return out;
+}
+
 export async function getUserPractice() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
