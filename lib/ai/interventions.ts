@@ -28,7 +28,7 @@ export type Intervention = {
 export const INTERVENTIONS: Intervention[] = [
   {
     id: "statin-cvd-primary",
-    indicators: ["CHOL001", "CHOL002", "CHOL003", "CHOL004"],
+    indicators: ["CHOL003", "CHOL004"],
     category: "prescribing_optimisation",
     title: "Lipid-lowering therapy in the CVD/CKD/DM cohort",
     identification: {
@@ -44,7 +44,7 @@ export const INTERVENTIONS: Intervention[] = [
   },
   {
     id: "sglt2-ckd-hf-t2dm",
-    indicators: ["DM033", "DM034", "DM036", "CKD005"],
+    indicators: ["DM033", "DM036", "CKD005"],
     category: "prescribing_optimisation",
     title: "SGLT2 inhibitor candidates in CKD / heart failure / type 2 diabetes",
     identification: {
@@ -106,10 +106,27 @@ export const INTERVENTIONS: Intervention[] = [
     guideline_ref: "NICE NG209",
   },
   {
-    id: "vaccination-cascade",
-    indicators: ["VACC001", "VACC002"],
+    id: "cervical-screening-recall",
+    indicators: ["CS005", "CS006"],
     category: "invite_recall",
-    title: "Vaccination invite cascade (flu, pneumococcal, shingles, RSV)",
+    title: "Cervical screening recall for women overdue a smear",
+    identification: {
+      ardens_path: "Ardens > Women's Health > Cervical Screening > Overdue Screening",
+      search_logic:
+        "Female AND in the eligible age band for the indicator (25-49, or 50-64) AND no adequate cervical sample recorded within the screening interval AND no exclusion, deferral or 'ceased' code. Exclude those already invited in the last 3 months.",
+    },
+    delivery_mechanism:
+      "Channel cascade: text with the national booking information first, then letter, then phone for non-responders; offer extended-hours or female-sample-taker slots.",
+    owner_role: "Practice administrator / practice nurse",
+    effort_estimate: "~1-2 sessions to set up, then ongoing recall",
+    expected_yield: "Cascade recall typically recovers 5-15% of the overdue cohort",
+    guideline_ref: "NHS Cervical Screening Programme",
+  },
+  {
+    id: "vaccination-cascade",
+    indicators: ["VI001", "VI002", "VI003", "VI004"],
+    category: "invite_recall",
+    title: "Vaccination invite cascade (childhood immunisations, flu, pneumococcal, shingles, RSV)",
     identification: {
       ardens_path: "Ardens > Immunisations > Eligible Not Vaccinated",
       search_logic:
@@ -122,7 +139,7 @@ export const INTERVENTIONS: Intervention[] = [
   },
   {
     id: "ld-smi-health-checks",
-    indicators: ["MH021", "LD004", "DEP003"],
+    indicators: ["MH021", "LD004", "DEP004"],
     category: "invite_recall",
     title: "Learning disability / serious mental illness annual health checks",
     identification: {
@@ -137,7 +154,7 @@ export const INTERVENTIONS: Intervention[] = [
   },
   {
     id: "annual-review-recall",
-    indicators: ["DM014", "COPD015", "AST012", "AF006"],
+    indicators: ["DM014", "COPD015", "AST011", "AST007", "AF006"],
     category: "invite_recall",
     title: "Structured annual review recall for long-term conditions",
     identification: {

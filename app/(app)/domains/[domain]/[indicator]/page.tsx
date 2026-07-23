@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getUserPractice, getPracticeContext, getIndicatorRows, CURRENT_YEAR } from "@/lib/qof/data";
 import { gbp, RAG_TEXT } from "@/lib/qof/calc";
+import { INTERVENTIONS } from "@/lib/ai/interventions";
 import BenchmarkBars from "@/components/BenchmarkBars";
 import TrendChart from "@/components/TrendChart";
 import PaymentBar from "@/components/PaymentBar";
@@ -38,6 +39,8 @@ export default async function IndicatorPage({ params }: { params: Promise<{ doma
   const trendData = (trend ?? []).map((t: any) => ({ year: t.year, value: Number(t.achievement_pct) }));
   const weighted = row && (row.cpi !== 1 || row.apdf !== 1);
   const { data: qis } = await supabase.from("qi_suggestion").select("*").eq("indicator_code", code).order("priority_weight", { ascending: false });
+  // Verified library entries that explicitly cover this indicator.
+  const library = INTERVENTIONS.filter((iv) => iv.indicators.includes(code));
 
   return (
     <div className="space-y-6">
@@ -110,12 +113,38 @@ export default async function IndicatorPage({ params }: { params: Promise<{ doma
 
       {qis && qis.length > 0 && (
         <div className="card">
-          <h2 className="mb-3 font-semibold">Up to 3 improvement actions</h2>
+          <h2 className="mb-3 font-semibold">Ready-to-send improvement actions</h2>
+          <p className="mb-3 text-sm text-slate-500">Includes a copy-ready Accurx message.</p>
           <ul className="space-y-3">
             {qis.slice(0,3).map((q) => (
               <li key={q.id} className="rounded-lg border border-slate-200 p-4">
                 <Link href={`/qi/${q.id}`} className="font-medium text-nhs-blue">{q.title}</Link>
                 <p className="mt-1 text-sm text-slate-600">{q.rationale}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Verified intervention library — covers indicators without a hand-written
+          Accurx action, so there's always a concrete next step. */}
+      {library.length > 0 && (
+        <div className="card">
+          <h2 className="font-semibold">How to close this gap</h2>
+          <p className="mb-3 text-sm text-slate-500">Verified searches and delivery routes for this indicator.</p>
+          <ul className="space-y-3">
+            {library.map((iv) => (
+              <li key={iv.id} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div className="font-medium text-slate-900">{iv.title}</div>
+                <dl className="mt-2 grid gap-x-6 gap-y-1 text-sm text-slate-600 sm:grid-cols-2">
+                  <div className="sm:col-span-2"><dt className="inline font-medium">Find them: </dt><dd className="inline">{iv.identification.ardens_path}</dd></div>
+                  <div className="sm:col-span-2"><dt className="inline font-medium">Search: </dt><dd className="inline font-mono text-xs">{iv.identification.search_logic}</dd></div>
+                  <div><dt className="inline font-medium">Delivery: </dt><dd className="inline">{iv.delivery_mechanism}</dd></div>
+                  <div><dt className="inline font-medium">Owner: </dt><dd className="inline">{iv.owner_role}</dd></div>
+                  <div><dt className="inline font-medium">Effort: </dt><dd className="inline">{iv.effort_estimate}</dd></div>
+                  <div><dt className="inline font-medium">Expected yield: </dt><dd className="inline">{iv.expected_yield}</dd></div>
+                </dl>
+                {iv.guideline_ref && <p className="mt-2 text-xs text-slate-400">Guideline: {iv.guideline_ref}</p>}
               </li>
             ))}
           </ul>
