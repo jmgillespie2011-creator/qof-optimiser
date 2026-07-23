@@ -8,7 +8,8 @@ export type RxMetric = {
 
 export type RxRow = RxMetric & {
   period: string | null;
-  you: number | null; you_pct: number | null;   // practice rate + percentile
+  you: number | null; you_pct: number | null;   // practice crude rate + percentile
+  you_adj: number | null; you_decile: number | null; // case-mix adjusted rate + 1-10 decile
   icb: number | null; england: number | null;
 };
 
@@ -20,7 +21,7 @@ export async function getPrescribing(practiceCode: string): Promise<{ rows: RxRo
 
   const [{ data: metrics }, { data: mine }, { data: icb }, { data: eng }] = await Promise.all([
     supabase.from("rx_metric").select("*").order("sort"),
-    supabase.from("rx_value").select("metric_key,items_per_1000,percentile,period").eq("ods_code", practiceCode),
+    supabase.from("rx_value").select("metric_key,items_per_1000,percentile,adj,decile,period").eq("ods_code", practiceCode),
     icbCode
       ? supabase.from("rx_value").select("metric_key,items_per_1000").eq("ods_code", icbCode).eq("org_level", "icb")
       : Promise.resolve({ data: [] as any[] }),
@@ -40,6 +41,8 @@ export async function getPrescribing(practiceCode: string): Promise<{ rows: RxRo
       period: you?.period ?? null,
       you: you?.items_per_1000 ?? null,
       you_pct: you?.percentile ?? null,
+      you_adj: you?.adj ?? null,
+      you_decile: you?.decile ?? null,
       icb: icbMap.get(m.metric_key) ?? null,
       england: engMap.get(m.metric_key) ?? null,
     };

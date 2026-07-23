@@ -18,6 +18,11 @@ function pctColour(p: number | null): string {
   return "#DA291C";
 }
 
+// Decile (1-10, 10 = best) → colour, matching the atlas red→green ramp.
+function decColour(d: number | null): string {
+  return pctColour(d == null ? null : d * 10 - 5);
+}
+
 export default async function PrescribingPage() {
   const { practiceCode } = await getUserPractice();
   const { rows, period } = await getPrescribing(practiceCode!);
@@ -43,10 +48,10 @@ export default async function PrescribingPage() {
         <div className="card">
           <h2 className="font-semibold">No prescribing data loaded yet</h2>
           <p className="mt-2 text-sm text-slate-600">
-            Run the ingest on your machine to populate this page:
+            Import it from the CVD &amp; Diabetes atlas files (instant, no network):
           </p>
-          <pre className="mt-2 overflow-x-auto rounded-lg bg-slate-900 p-3 text-xs text-slate-100">node scripts/ingest-openprescribing.mjs</pre>
-          <p className="mt-2 text-xs text-slate-500">It pulls from openprescribing.net and rolls up to PCN / ICB / England automatically.</p>
+          <pre className="mt-2 overflow-x-auto rounded-lg bg-slate-900 p-3 text-xs text-slate-100">node scripts/import-atlas-prescribing.mjs</pre>
+          <p className="mt-2 text-xs text-slate-500">Uses the atlases' real, case-mix-adjusted figures and rolls up to PCN / ICB / England.</p>
         </div>
       ) : (
         [...byDomain.entries()].map(([domain, metrics]) => (
@@ -79,22 +84,31 @@ function MetricCard({ r }: { r: RxRow }) {
           <p className="text-sm text-slate-500">{r.name}</p>
           {r.qof_link && <p className="mt-1 text-xs text-nhs-blue">{r.qof_link}</p>}
         </div>
-        <div className="text-right">
-          <div className="text-2xl font-bold text-slate-900">{fmt(r.you, r.unit)}</div>
-          <div className="text-xs text-slate-400">{r.unit === "%" ? "of statins" : "items / 1,000 patients"}</div>
+        <div className="flex items-center gap-3">
+          <div className="text-right">
+            <div className="text-2xl font-bold text-slate-900">{fmt(r.you, r.unit)}</div>
+            <div className="text-xs text-slate-400">{r.unit === "%" ? "of statins" : "items / 1,000 patients"}</div>
+          </div>
+          {r.you_decile != null && (
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg text-white"
+              style={{ background: decColour(r.you_decile) }} title="Case-mix adjusted decile (10 = highest prescribing vs peers)">
+              <span className="text-lg font-bold leading-none">{r.you_decile}</span>
+              <span className="text-[9px] leading-none opacity-90">/10</span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* percentile bar */}
-      {r.you_pct != null && (
+      {/* decile bar (case-mix adjusted position vs peers, atlas red→green ramp) */}
+      {r.you_decile != null && (
         <div className="mt-4">
-          <div className="relative h-2 w-full rounded-full bg-slate-100">
-            <div className="absolute top-1/2 h-4 w-1 -translate-y-1/2 rounded-full"
-              style={{ left: `calc(${r.you_pct}% - 2px)`, background: pctColour(r.you_pct) }} />
+          <div className="relative h-2 w-full rounded-full bg-gradient-to-r from-red-200 via-amber-100 to-green-200">
+            <div className="absolute top-1/2 h-4 w-1.5 -translate-y-1/2 rounded-full ring-2 ring-white"
+              style={{ left: `calc(${r.you_decile * 10 - 5}% - 3px)`, background: decColour(r.you_decile) }} />
           </div>
           <div className="mt-1 flex justify-between text-xs text-slate-400">
-            <span>Lowest in England</span>
-            <span className="font-medium" style={{ color: pctColour(r.you_pct) }}>{r.you_pct}th percentile</span>
+            <span>Lowest prescribing</span>
+            {r.you_adj != null && <span>Case-mix adjusted: <span className="font-medium text-slate-600">{r.you_adj}</span></span>}
             <span>Highest</span>
           </div>
         </div>
