@@ -1,19 +1,31 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { QiPlan } from "@/lib/ai/qiPlan/types";
+import type { QiPlan, PriorityRow, PlanIntervention } from "@/lib/ai/qiPlan/types";
 
 type Status = "idle" | "queued" | "running" | "done" | "error";
 
-const GAP_LABEL: Record<string, string> = {
-  achievement: "Achievement gap",
-  exception_coding: "Exception / coding",
-  prevalence_coding: "Prevalence / coding",
+const GAP_STYLE: Record<string, { label: string; cls: string }> = {
+  achievement: { label: "Achievement gap", cls: "bg-nhs-blue/10 text-nhs-blue" },
+  exception_coding: { label: "Exception / coding", cls: "bg-amber-100 text-amber-700" },
+  prevalence_coding: { label: "Prevalence / coding", cls: "bg-purple-100 text-purple-700" },
 };
 
 // Turn a machine domain key ("public_health") into a heading ("Public health").
 function prettyDomain(d: string): string {
   const s = d.replace(/_/g, " ").trim();
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// Pull the low/high bounds out of a value/patient range string like "£800–1,100".
+function parseRange(s: string): [number, number] | null {
+  const nums = (s.match(/[\d,]+(?:\.\d+)?/g) ?? []).map((n) => Number(n.replace(/,/g, "")));
+  if (nums.length === 0) return null;
+  return [nums[0], nums[nums.length - 1]];
+}
+
+function poundRange(lo: number, hi: number): string {
+  const f = (n: number) => "£" + Math.round(n).toLocaleString("en-GB");
+  return lo === hi ? f(lo) : `${f(lo)}–${f(hi)}`;
 }
 
 export default function QiPlanPanel() {
@@ -91,125 +103,239 @@ export default function QiPlanPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
+      {/* Controls — hidden when printing */}
+      <div className="flex flex-wrap items-center gap-3 print:hidden" data-no-print>
         <button className="btn" onClick={generate} disabled={busy}>
           {busy ? "Generating…" : plan ? "Regenerate QI plan" : "Generate QI plan"}
         </button>
+        {plan && !busy && (
+          <button className="btn-ghost" onClick={() => window.print()}>
+            Print / Save as PDF
+          </button>
+        )}
         {busy && <span className="text-sm text-slate-500">This takes 10–30 seconds. Analysing all domains…</span>}
         {generatedAt && !busy && (
           <span className="text-sm text-slate-500">Generated {new Date(generatedAt).toLocaleString("en-GB")}</span>
         )}
       </div>
 
-      {error && (
-        <div className="card border-red-200 bg-red-50 text-sm text-nhs-red">{error}</div>
+      {error && <div className="card border-red-200 bg-red-50 text-sm text-nhs-red">{error}</div>}
+
+      {busy && !plan && (
+        <div className="card flex items-center gap-3 text-slate-600">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-nhs-blue" />
+          Building your plan across all domains…
+        </div>
       )}
 
-      {plan && (
-        <article className="space-y-8">
-          <section className="card">
-            <h2 className="text-lg font-semibold">Position summary</h2>
-            <p className="mt-2 whitespace-pre-line text-slate-700">{plan.position_summary}</p>
-          </section>
-
-          <section>
-            <h2 className="mb-3 text-lg font-semibold">Priority indicators</h2>
-            <p className="mb-3 text-sm text-slate-500">Ranked by points recoverable — biggest payment opportunity first.</p>
-            <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-              <table className="w-full min-w-[720px] text-sm">
-                <thead className="bg-slate-50 text-left text-slate-500">
-                  <tr>
-                    <th className="p-3">Indicator</th>
-                    <th className="p-3">You</th>
-                    <th className="p-3">ICB</th>
-                    <th className="p-3">Points</th>
-                    <th className="p-3">Patients</th>
-                    <th className="p-3">Value</th>
-                    <th className="p-3">Type</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {plan.priority_table.map((r) => (
-                    <tr key={r.indicator_code} className="border-t border-slate-100 align-top">
-                      <td className="p-3">
-                        <div className="font-medium text-nhs-blue">{r.indicator_code}</div>
-                        <div className="text-slate-500">{r.indicator_name}</div>
-                      </td>
-                      <td className="p-3">{r.current_pct ?? "—"}%</td>
-                      <td className="p-3">{r.icb_median_pct ?? "—"}%</td>
-                      <td className="p-3 font-semibold">{r.points_gap}</td>
-                      <td className="p-3">{r.est_patients_range}</td>
-                      <td className="p-3 font-semibold">{r.est_value_range}</td>
-                      <td className="p-3 text-slate-600">{GAP_LABEL[r.gap_type] ?? r.gap_type}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          {plan.domain_sections.map((s) => (
-            <section key={s.domain} className="card">
-              <div className="flex items-baseline justify-between gap-3">
-                <h3 className="text-base font-semibold">{prettyDomain(s.domain)}</h3>
-                <span className="text-xs text-slate-400">{s.indicator_codes.join(", ")}</span>
-              </div>
-              <p className="mt-2 whitespace-pre-line text-slate-700">{s.analysis}</p>
-              <div className="mt-4 space-y-4">
-                {s.interventions.map((iv, idx) => (
-                  <div key={idx} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                    <p className="font-medium">{iv.contextualised_description}</p>
-                    <dl className="mt-2 grid gap-x-6 gap-y-1 text-sm text-slate-600 sm:grid-cols-2">
-                      <div><dt className="inline font-medium">Ardens: </dt><dd className="inline">{iv.identification.ardens_path}</dd></div>
-                      <div><dt className="inline font-medium">Owner: </dt><dd className="inline">{iv.owner_role}</dd></div>
-                      <div className="sm:col-span-2"><dt className="inline font-medium">Search: </dt><dd className="inline">{iv.identification.search_logic}</dd></div>
-                      <div><dt className="inline font-medium">Delivery: </dt><dd className="inline">{iv.delivery_mechanism}</dd></div>
-                      <div><dt className="inline font-medium">Effort: </dt><dd className="inline">{iv.effort_estimate}</dd></div>
-                      <div><dt className="inline font-medium">Expected yield: </dt><dd className="inline">{iv.expected_yield}</dd></div>
-                    </dl>
-                  </div>
-                ))}
-              </div>
-              {s.review_checkpoint && (
-                <p className="mt-3 text-sm text-slate-500"><span className="font-medium">Review checkpoint:</span> {s.review_checkpoint}</p>
-              )}
-            </section>
-          ))}
-
-          {plan.cross_cutting_themes.length > 0 && (
-            <section className="card">
-              <h2 className="text-lg font-semibold">Cross-cutting themes</h2>
-              <ul className="mt-2 space-y-3">
-                {plan.cross_cutting_themes.map((t, i) => (
-                  <li key={i}>
-                    <p className="font-medium">{t.theme}</p>
-                    <p className="text-sm text-slate-600">{t.evidence}</p>
-                    <p className="text-sm text-slate-600"><span className="font-medium">Implication:</span> {t.implication}</p>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {plan.next_steps.length > 0 && (
-            <section className="card">
-              <h2 className="text-lg font-semibold">Next steps</h2>
-              <ul className="mt-2 space-y-2 text-sm">
-                {plan.next_steps.map((n, i) => (
-                  <li key={i} className="flex flex-wrap gap-x-2">
-                    <span className="font-medium">{n.action}</span>
-                    <span className="text-slate-500">— {n.owner_role}, {n.timeframe}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {plan.footer && (
-            <footer className="whitespace-pre-line border-t border-slate-200 pt-4 text-xs text-slate-400">{plan.footer}</footer>
-          )}
-        </article>
-      )}
+      {plan && <PlanReport plan={plan} />}
     </div>
+  );
+}
+
+function PlanReport({ plan }: { plan: QiPlan }) {
+  const totalPoints = plan.priority_table.reduce((s, r) => s + (r.points_gap || 0), 0);
+  const actionCount = plan.domain_sections.reduce((s, d) => s + d.interventions.length, 0);
+
+  // Total estimated £ opportunity across priorities (parsed from the ranges).
+  let vLo = 0, vHi = 0, parsed = 0;
+  for (const r of plan.priority_table) {
+    const rng = parseRange(r.est_value_range);
+    if (rng) { vLo += rng[0]; vHi += rng[1]; parsed++; }
+  }
+
+  return (
+    <article className="space-y-6">
+      {/* At-a-glance metric strip */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Metric label="Est. value opportunity" value={parsed ? poundRange(vLo, vHi) : "—"} accent />
+        <Metric label="Points recoverable" value={totalPoints.toLocaleString("en-GB")} />
+        <Metric label="Priority indicators" value={String(plan.priority_table.length)} />
+        <Metric label="Recommended actions" value={String(actionCount)} />
+      </div>
+
+      {/* Position summary as a lead callout */}
+      <section className="rounded-xl border-l-4 border-nhs-blue bg-white p-5 shadow-sm">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-nhs-blue">Position summary</h2>
+        <p className="mt-2 whitespace-pre-line leading-relaxed text-slate-700">{plan.position_summary}</p>
+      </section>
+
+      {/* Priority indicators */}
+      <section>
+        <SectionHeading n={1} title="Priority indicators" sub="Ranked by points recoverable — biggest payment opportunity first." />
+        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+          <table className="w-full min-w-[720px] text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="p-3 font-medium">Indicator</th>
+                <th className="p-3 font-medium">You → ICB</th>
+                <th className="p-3 text-right font-medium">Points</th>
+                <th className="p-3 font-medium">Patients</th>
+                <th className="p-3 text-right font-medium">Est. value</th>
+                <th className="p-3 font-medium">Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              {plan.priority_table.map((r, i) => (
+                <PriorityRowView key={r.indicator_code} r={r} rank={i + 1} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Domain sections */}
+      {plan.domain_sections.map((s, i) => (
+        <section key={`${s.domain}-${i}`} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-l-4 border-nhs-blue px-5 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-base font-semibold text-slate-900">{prettyDomain(s.domain)}</h3>
+              <div className="flex flex-wrap gap-1">
+                {s.indicator_codes.map((c) => (
+                  <span key={c} className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-600">{c}</span>
+                ))}
+              </div>
+            </div>
+            <p className="mt-2 max-w-3xl whitespace-pre-line text-sm leading-relaxed text-slate-600">{s.analysis}</p>
+          </div>
+
+          {s.interventions.length > 0 && (
+            <div className="space-y-4 bg-slate-50 px-5 py-4">
+              {s.interventions.map((iv, idx) => (
+                <InterventionCard key={idx} iv={iv} n={idx + 1} />
+              ))}
+            </div>
+          )}
+
+          {s.review_checkpoint && (
+            <p className="border-t border-slate-100 px-5 py-3 text-sm text-slate-500">
+              <span className="font-medium text-slate-700">↻ Review checkpoint:</span> {s.review_checkpoint}
+            </p>
+          )}
+        </section>
+      ))}
+
+      {/* Cross-cutting themes */}
+      {plan.cross_cutting_themes.length > 0 && (
+        <section>
+          <SectionHeading title="Cross-cutting themes" />
+          <div className="grid gap-3 sm:grid-cols-2">
+            {plan.cross_cutting_themes.map((t, i) => (
+              <div key={i} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="font-medium text-slate-900">{t.theme}</p>
+                <p className="mt-1 text-sm text-slate-600">{t.evidence}</p>
+                <p className="mt-2 border-t border-slate-100 pt-2 text-sm text-slate-600">
+                  <span className="font-medium text-nhs-blue">Implication:</span> {t.implication}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Next steps */}
+      {plan.next_steps.length > 0 && (
+        <section>
+          <SectionHeading title="Next steps" />
+          <ol className="space-y-2">
+            {plan.next_steps.map((n, i) => (
+              <li key={i} className="flex gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-nhs-blue text-xs font-semibold text-white">{i + 1}</span>
+                <div>
+                  <p className="font-medium text-slate-900">{n.action}</p>
+                  <p className="mt-0.5 text-sm text-slate-500">{n.owner_role} · {n.timeframe}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
+      {plan.footer && (
+        <footer className="whitespace-pre-line border-t border-slate-200 pt-4 text-xs leading-relaxed text-slate-400">{plan.footer}</footer>
+      )}
+    </article>
+  );
+}
+
+function Metric({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div className={`rounded-xl border p-4 shadow-sm ${accent ? "border-nhs-blue/30 bg-nhs-blue/5" : "border-slate-200 bg-white"}`}>
+      <div className="text-xs text-slate-500">{label}</div>
+      <div className={`mt-1 text-xl font-bold ${accent ? "text-nhs-blue" : "text-slate-900"}`}>{value}</div>
+    </div>
+  );
+}
+
+function SectionHeading({ n, title, sub }: { n?: number; title: string; sub?: string }) {
+  return (
+    <div className="mb-3">
+      <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+        {n != null && <span className="grid h-6 w-6 place-items-center rounded-md bg-nhs-blue text-xs text-white">{n}</span>}
+        {title}
+      </h2>
+      {sub && <p className="mt-1 text-sm text-slate-500">{sub}</p>}
+    </div>
+  );
+}
+
+function PriorityRowView({ r, rank }: { r: PriorityRow; rank: number }) {
+  const gap = GAP_STYLE[r.gap_type] ?? { label: r.gap_type, cls: "bg-slate-100 text-slate-600" };
+  return (
+    <tr className="border-t border-slate-100 align-top">
+      <td className="p-3">
+        <div className="flex items-baseline gap-2">
+          <span className="text-xs text-slate-400">{rank}</span>
+          <span className="font-mono font-medium text-nhs-blue">{r.indicator_code}</span>
+        </div>
+        <div className="text-slate-500">{r.indicator_name}</div>
+      </td>
+      <td className="p-3 whitespace-nowrap">
+        <span className="font-semibold text-slate-900">{r.current_pct ?? "—"}%</span>
+        <span className="text-slate-400"> → </span>
+        <span className="text-slate-600">{r.icb_median_pct ?? "—"}%</span>
+      </td>
+      <td className="p-3 text-right font-semibold">{r.points_gap}</td>
+      <td className="p-3 whitespace-nowrap text-slate-600">{r.est_patients_range}</td>
+      <td className="p-3 whitespace-nowrap text-right font-semibold text-slate-900">{r.est_value_range}</td>
+      <td className="p-3">
+        <span className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${gap.cls}`}>{gap.label}</span>
+      </td>
+    </tr>
+  );
+}
+
+function InterventionCard({ iv, n }: { iv: PlanIntervention; n: number }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <div className="flex gap-3">
+        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-nhs-green/10 text-xs font-semibold text-nhs-green">{n}</span>
+        <div className="min-w-0 flex-1">
+          <p className="font-medium text-slate-900">{iv.contextualised_description}</p>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Chip label="Owner" value={iv.owner_role} />
+            <Chip label="Effort" value={iv.effort_estimate} />
+            <Chip label="Yield" value={iv.expected_yield} />
+            <Chip label="Delivery" value={iv.delivery_mechanism} />
+          </div>
+
+          <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
+            <div className="text-slate-700">
+              <span className="font-medium">Find them (Ardens):</span> {iv.identification.ardens_path}
+            </div>
+            <div className="mt-1.5 font-mono text-xs leading-relaxed text-slate-500">{iv.identification.search_logic}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Chip({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="inline-flex items-baseline gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-600">
+      <span className="font-medium text-slate-500">{label}:</span> {value}
+    </span>
   );
 }

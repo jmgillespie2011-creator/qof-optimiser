@@ -8,3 +8,14 @@ body { @apply bg-slate-50 text-slate-900 antialiased; }
 .btn-ghost { @apply inline-flex items-center justify-center rounded-lg border border-slate-300 px-4 py-2 font-medium text-slate-700 hover:bg-slate-100; }
 .input { @apply w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-nhs-blue focus:ring-2 focus:ring-nhs-blue/20; }
 .label { @apply mb-1 block text-sm font-medium text-slate-700; }
+
+/* Print / Save-as-PDF: drop the app chrome and tidy cards so a QI plan prints
+   as a clean document a practice can send to its ICB. */
+@media print {
+  header, [data-no-print] { display: none !important; }
+  body { background: #fff; }
+  .card, article section, article .shadow-sm { box-shadow: none !important; }
+  article section { break-inside: avoid; }
+  a { color: inherit !important; text-decoration: none !important; }
+  @page { margin: 16mm; }
+}

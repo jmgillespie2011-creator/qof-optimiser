@@ -24,7 +24,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <form action={signOutAction}><button className="text-sm text-slate-500 hover:text-nhs-red">Sign out</button></form>
         </div>
       </header>
-      <SampleBanner />
+      <div data-no-print><SampleBanner /></div>
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">{children}</div>
     </div>
   );
