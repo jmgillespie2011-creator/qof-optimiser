@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getUserPractice } from "@/lib/qof/data";
 import { getPrescribing, type RxRow } from "@/lib/qof/prescribing";
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Prescribing" };
 
 function fmt(v: number | null, unit: string): string {
   if (v == null) return "—";

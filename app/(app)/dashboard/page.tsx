@@ -4,6 +4,7 @@ import { gbp, RAG_TEXT } from "@/lib/qof/calc";
 import PaymentBar from "@/components/PaymentBar";
 import PracticeProfileCard from "@/components/PracticeProfile";
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Dashboard" };
 
 export default async function Dashboard() {
   const { practiceCode } = await getUserPractice();

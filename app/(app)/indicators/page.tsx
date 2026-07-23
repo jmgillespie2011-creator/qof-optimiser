@@ -1,6 +1,7 @@
 import { getUserPractice, getIndicatorRows, CURRENT_YEAR } from "@/lib/qof/data";
 import IndicatorsTable from "@/components/IndicatorsTable";
 export const dynamic = "force-dynamic";
+export const metadata = { title: "All indicators" };
 export default async function IndicatorsPage() {
   const { practiceCode } = await getUserPractice();
   const rows = await getIndicatorRows(practiceCode!);

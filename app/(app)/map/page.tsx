@@ -3,6 +3,7 @@ import IndicatorSelect from "@/components/IndicatorSelect";
 import MapClient from "@/components/MapClient";
 import { CURRENT_YEAR, fetchAllRows } from "@/lib/qof/data";
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Geographic view" };
 
 export default async function MapPage({ searchParams }: { searchParams: Promise<{ indicator?: string }> }) {
   const sp = await searchParams;

@@ -27,6 +27,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </header>
       <div data-no-print><SampleBanner /></div>
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">{children}</div>
+      <footer data-no-print className="mt-8 border-t border-slate-200 bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-6 text-xs leading-relaxed text-slate-500 sm:px-6">
+          <p className="font-medium text-slate-600">QOF Optimiser</p>
+          <p className="mt-1">
+            Uses published NHS data only (QOF achievement, OpenPrescribing, NHS ODS) — no patient-identifiable data.
+            Estimates are indicative and intended as prompts for discussion, not clinical or financial advice.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }
