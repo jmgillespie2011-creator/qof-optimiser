@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getUserPractice, getIndicatorRows, getPracticeProfile, CURRENT_YEAR } from "@/lib/qof/data";
-import { gbp, RAG_TEXT } from "@/lib/qof/calc";
+import { gbp, RAG_TEXT, RAG_HEX } from "@/lib/qof/calc";
 import PaymentBar from "@/components/PaymentBar";
 import PracticeProfileCard from "@/components/PracticeProfile";
 export const dynamic = "force-dynamic";
@@ -50,23 +50,42 @@ export default async function Dashboard() {
       {profile && <PracticeProfileCard p={profile} />}
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">Biggest opportunities</h2>
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+        <div className="mb-3 flex items-baseline justify-between gap-3">
+          <h2 className="text-lg font-semibold">Biggest opportunities</h2>
+          <span className="text-sm text-slate-400">{ranked.length} indicators, ranked by £ at risk</span>
+        </div>
+        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
           <table className="w-full min-w-[680px] text-sm">
-            <thead className="bg-slate-50 text-left text-slate-500">
-              <tr><th className="p-3">Indicator</th><th className="p-3">Domain</th><th className="p-3 w-56">Payment band</th><th className="p-3">You</th><th className="p-3">Pts short</th><th className="p-3">£ at risk</th></tr>
+            <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="p-3 font-medium">Indicator</th>
+                <th className="p-3 font-medium">Domain</th>
+                <th className="w-56 p-3 font-medium">Payment band</th>
+                <th className="p-3 text-right font-medium">You</th>
+                <th className="p-3 text-right font-medium">Pts short</th>
+                <th className="p-3 text-right font-medium">£ at risk</th>
+              </tr>
             </thead>
             <tbody>
               {ranked.map((r) => {
                 const g = r.rag;
                 return (
-                  <tr key={r.indicator_code} className="border-t border-slate-100 align-middle">
+                  <tr key={r.indicator_code} className="border-t border-slate-100 align-middle hover:bg-slate-50/60">
                     <td className="p-3"><Link href={`/domains/${r.domain}/${r.indicator_code}`} className="font-mono font-medium text-nhs-blue" title={r.description ?? undefined}>{r.indicator_code}</Link><div className="text-slate-500">{r.title}</div></td>
-                    <td className="p-3">{r.domain_label}</td>
+                    <td className="p-3 text-slate-600">{r.domain_label}</td>
                     <td className="p-3"><PaymentBar pct={r.achievement_pct} lower={r.lower_threshold} upper={r.upper_threshold} /></td>
-                    <td className={`p-3 font-semibold ${RAG_TEXT[g]}`}>{r.is_register ? <span className="text-slate-500" title="Register / points-only indicator — no achievement %">Register</span> : `${r.achievement_pct ?? "—"}%`}</td>
-                    <td className="p-3">{r.points_short}</td>
-                    <td className="p-3 font-semibold">{gbp(r.money_at_risk)}</td>
+                    <td className="p-3 text-right">
+                      {r.is_register ? (
+                        <span className="text-slate-500" title="Register / points-only indicator — no achievement %">Register</span>
+                      ) : (
+                        <span className={`inline-flex items-center gap-1.5 font-semibold tabular-nums ${RAG_TEXT[g]}`}>
+                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: RAG_HEX[g] }} />
+                          {r.achievement_pct ?? "—"}%
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-3 text-right tabular-nums text-slate-600">{r.points_short}</td>
+                    <td className="p-3 text-right font-semibold tabular-nums">{gbp(r.money_at_risk)}</td>
                   </tr>
                 );
               })}
