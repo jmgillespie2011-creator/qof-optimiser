@@ -119,6 +119,9 @@ export async function assembleQiPlanInput(practiceCode: string): Promise<QiPlanI
     const y: any = yearMap.get(i.indicator_code);
     if (!y) continue;
     const a: any = pracMap.get(i.indicator_code);
+    // Skip indicators the practice has no achievement data for (e.g. stale
+    // sample-seed indicators not in the real publication) — they aren't a gap.
+    if (!a) continue;
     const icb: any = icbMap.get(i.indicator_code);
     const nat: any = natMap.get(i.indicator_code);
 
