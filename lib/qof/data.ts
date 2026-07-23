@@ -41,6 +41,8 @@ export type IndicatorRow = {
   lower_threshold: number | null; upper_threshold: number | null; pound_per_point: number; status: string;
   cpi: number; apdf: number; money_unweighted: number; money_at_risk: number; points_short: number; rag: Rag;
   is_register: boolean;
+  exceptions: number | null;          // count of exception-coded (personalised care adjustment) patients
+  register_wide_pct: number | null;   // achievement across the whole register, INCLUDING exceptions
 };
 
 // list-size + prevalence weighting per QOF guidance:
@@ -81,6 +83,12 @@ export async function getIndicatorRows(practiceCode: string): Promise<IndicatorR
     // Register/points-only indicators carry no percentage at all — flag them so
     // the UI shows "Register" instead of a misleading "—%".
     const isRegister = pct == null && a.numerator == null && achieved != null;
+    // Register-wide (population) achievement includes exception-coded patients in
+    // the base: numerator / (denominator + exceptions).
+    const exceptions = a.pca_exceptions ?? null;
+    const registerWide = (a.numerator != null && a.denominator != null && exceptions != null && a.denominator + exceptions > 0)
+      ? Math.round((a.numerator / (a.denominator + exceptions)) * 1000) / 10
+      : null;
 
     // APDF (clinical indicators only)
     let apdf = 1;
@@ -105,7 +113,7 @@ export async function getIndicatorRows(practiceCode: string): Promise<IndicatorR
       achievement_pct: pct, points: y.points, points_achieved: achieved,
       lower_threshold: y.lower_threshold, upper_threshold: y.upper_threshold, pound_per_point: y.pound_per_point,
       status: y.status, cpi: Math.round(cpi * 100) / 100, apdf, money_unweighted: base, money_at_risk: money, points_short: short, rag: ragv,
-      is_register: isRegister,
+      is_register: isRegister, exceptions, register_wide_pct: registerWide,
     });
   }
   return rows;

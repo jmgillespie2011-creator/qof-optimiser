@@ -48,11 +48,28 @@ export default async function IndicatorPage({ params }: { params: Promise<{ doma
       </div>
 
       <div className="grid gap-4 sm:grid-cols-4">
-        <Stat label="Your achievement" value={`${you?.achievement_pct ?? "—"}%`} cls={RAG_TEXT[g]} />
+        <Stat label="Reported achievement" value={row?.is_register ? "Register" : `${you?.achievement_pct ?? "—"}%`} cls={RAG_TEXT[g]} />
+        <Stat label="Whole-register achievement" value={row?.register_wide_pct != null ? `${row.register_wide_pct}%` : "—"} />
         <Stat label="Points" value={`${row?.points_achieved ?? "—"} / ${iy?.points ?? "—"}`} />
-        <Stat label="Register" value={`${you?.register_size ?? "—"}`} />
         <Stat label="£ at risk (weighted)" value={gbp(row?.money_at_risk ?? 0)} />
       </div>
+
+      {row?.register_wide_pct != null && you?.achievement_pct != null && row.exceptions != null && (
+        <div className="card border-amber-200 bg-amber-50/60">
+          <h2 className="font-semibold">Reported rate vs the whole register</h2>
+          <p className="mt-1 text-sm text-slate-700">
+            The QOF <strong>reported</strong> rate of <strong>{you.achievement_pct}%</strong> excludes{" "}
+            <strong>{row.exceptions.toLocaleString()}</strong> exception-coded patients (personalised care adjustments).
+            Across the <strong>whole eligible register</strong> — including those patients — achievement is{" "}
+            <strong>{row.register_wide_pct}%</strong>
+            {you.achievement_pct - row.register_wide_pct >= 5 && (
+              <>. That {(you.achievement_pct - row.register_wide_pct).toFixed(1)}-point gap means a sizeable cohort is
+              exception-coded; a periodic review confirms the codes still apply and surfaces patients who could still be recalled</>
+            )}
+            . This is a clinical-quality view, not a QOF-payment one — payment is on the reported rate.
+          </p>
+        </div>
+      )}
 
       {weighted && (
         <div className="card bg-slate-50">

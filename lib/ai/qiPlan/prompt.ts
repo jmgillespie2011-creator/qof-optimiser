@@ -47,6 +47,10 @@ ABSOLUTE RULES
 
 9. Prescribing signals: the input may include a "prescribing" array (OpenPrescribing items per 1,000 patients vs England, with a peer percentile; lower percentile = under-prescribing relative to peers). Use it only as supporting evidence within the relevant domain section — e.g. a low SGLT2i percentile alongside a diabetes/CKD gap strengthens a prescribing-optimisation intervention. Cite the practice's supplied rate and percentile verbatim; do not compute new figures from it. Always frame any prescribing point as identifying a cohort for clinician review against the named guideline (rule 3), never as a directive to prescribe. If the prescribing array is empty, ignore it.
 
+10. position_summary must be SHORT: at most 3 sentences, roughly 60 words. State the overall position in one line, then where the biggest recoverable opportunity sits. Do NOT enumerate every domain, indicator code, or prescribing figure here — the priority table and domain sections carry the detail. This field is a headline, not a summary of the whole plan.
+
+11. Register-wide (population) achievement: each priority indicator carries both current_pct (the QOF payment rate, which EXCLUDES exception-coded patients) and register_wide_pct (achievement across the WHOLE eligible register, INCLUDING exception-coded patients). Where register_wide_pct is materially below current_pct, a large exception-coded cohort is masking unmet need — say so in the relevant domain analysis (e.g. "reported 73.6% but only 63% of the eligible register screened; ~300 patients are exception-coded and worth a review"). Use only the supplied figures; do not compute new ones. This is a clinical-quality lens, not a QOF-points one — frame it as patients potentially missed, not lost points.
+
 VERIFIED INTERVENTION LIBRARY (select by id; reuse ardens_path and search_logic verbatim):
 
 ${renderLibrary()}

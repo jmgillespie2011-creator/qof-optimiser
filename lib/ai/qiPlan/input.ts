@@ -12,7 +12,9 @@ export type PriorityIndicator = {
   indicator_name: string;
   domain: string;
   domain_label: string;
-  current_pct: number | null;
+  current_pct: number | null;         // QOF payment rate (excludes exception-coded patients)
+  register_wide_pct: number | null;   // achievement across the whole register (includes exceptions)
+  exceptions: number | null;          // count of exception-coded patients
   icb_median_pct: number | null;
   national_median_pct: number | null;
   points_available: number;
@@ -193,12 +195,22 @@ export async function assembleQiPlanInput(practiceCode: string): Promise<QiPlanI
     const excIcb = exceptionRate(icb);
     const exceptionOutlier = excPrac != null && excIcb != null && excPrac >= excIcb + 10;
 
+    // Register-wide (population) achievement = numerator / (denominator + exceptions):
+    // the whole eligible register, INCLUDING exception-coded patients.
+    const exceptions = a?.pca_exceptions ?? null;
+    const numer = a?.numerator ?? null;
+    const registerWide = (numer != null && denom != null && exceptions != null && denom + exceptions > 0)
+      ? round1((numer / (denom + exceptions)) * 100)
+      : null;
+
     priority.push({
       indicator_code: i.indicator_code,
       indicator_name: i.title,
       domain: i.domain,
       domain_label: i.domain_label,
       current_pct: currentPct,
+      register_wide_pct: registerWide,
+      exceptions,
       icb_median_pct: icbPct,
       national_median_pct: natPct,
       points_available: pointsAvail,
