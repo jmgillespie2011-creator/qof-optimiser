@@ -102,6 +102,26 @@ Once real data is loaded, remove the sample banner by deleting `<SampleBanner />
 - QI engine: up to 3 suggestions per indicator → QI action pages with copy-ready Accurx templates
 - Full schema + RLS + seed (CVD/lipids with real 2025/26 figures, plus diabetes/respiratory/MH/public-health samples)
 
+## AI features (Feature 1: AI QI plans)
+
+Generates a practice-specific, all-domains quality-improvement plan with Claude. See `ai-features-spec.md` for the full spec (Features 2–5 reuse this infrastructure).
+
+**Setup**
+1. In Supabase SQL Editor, run `supabase/migrations/0007_ai.sql` (adds the `ai_artifact` cache and `ai_job` queue).
+2. Add to `.env.local`: `ANTHROPIC_API_KEY` (from console.anthropic.com) and `SUPABASE_SERVICE_ROLE_KEY`. Restart `npm run dev`.
+3. Open a practice **Dashboard → Generate QI plan**, or `/qi-plan`.
+
+**How it works (all under `lib/ai/`)**
+- **Provider abstraction** (`provider.ts`) — every model call goes through `LLMProvider`; model id is config (`ANTHROPIC_MODEL`, default `claude-sonnet-5`). Static system prompt is prompt-cached; practice data goes last.
+- **Cache** (`cache.ts`) — every artefact cached by `{feature}:{entity}:{id}:{year}:{data_hash}`; new QOF data changes the hash so stale entries fall out. Token counts persisted for cost/model-comparison.
+- **Rate limiting** (`ratelimit.ts`) — 20/session/hour + a global daily ceiling (both configurable).
+- **Async generation** — the API route (`app/api/ai/qi-plan`) does cache lookup → rate check → enqueues a job and generates off the request path (`after()`); the UI polls. Never generates synchronously.
+- **Intervention library** (`interventions.ts`) — the model *selects and contextualises* verified entries (Ardens path + buildable search logic); it never invents search logic or SNOMED codes.
+- **Validation** (`qiPlan/validate.ts`) — JSON-schema output, all numbers verified against the pre-computed input, every intervention id checked, directive prescribing language rejected. One retry on failure; invalid output is never cached.
+- **Safety** — all numbers are computed in `qiPlan/input.ts` and passed *into* the prompt (the model does no arithmetic); prescribing is always framed as *identify a cohort for clinician review*.
+
+PDF export (§1.6) and Features 2–5 are not built yet — verify plan quality against real practices first (spec build order step 4).
+
 ## Roadmap
 See `QOF-Optimiser-Architecture-Plan.md`. Next: real multi-year ingestion + roll-ups, OpenPrescribing wiring into QI triggers, remaining domains, Stripe paid tier, DCB0129 hazard log.
 

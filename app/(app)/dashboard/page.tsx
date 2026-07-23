@@ -31,11 +31,18 @@ export default async function Dashboard() {
   return (
     <div className="space-y-8">
       <div className="rounded-xl bg-nhs-blue p-5 text-white sm:p-6">
-        <p className="text-sm opacity-90">Estimated QOF value at risk across all domains (2025/26)</p>
-        <p className="mt-1 text-3xl font-bold sm:text-4xl">{gbp(total)}</p>
-        <p className="mt-1 text-sm opacity-90" title="Sum across indicators of (points short of upper threshold) × £225.49">
-          Based on current achievement vs upper payment thresholds at £225.49/point.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm opacity-90">Estimated QOF value at risk across all domains (2025/26)</p>
+            <p className="mt-1 text-3xl font-bold sm:text-4xl">{gbp(total)}</p>
+            <p className="mt-1 text-sm opacity-90" title="Sum across indicators of (points short of upper threshold) × £225.49">
+              Based on current achievement vs upper payment thresholds at £225.49/point.
+            </p>
+          </div>
+          <Link href="/qi-plan" className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-nhs-blue hover:bg-slate-100">
+            Generate QI plan →
+          </Link>
+        </div>
       </div>
 
       {profile && <PracticeProfileCard p={profile} />}
