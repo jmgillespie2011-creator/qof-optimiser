@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import IndicatorSelect from "@/components/IndicatorSelect";
 import MapClient from "@/components/MapClient";
-import { CURRENT_YEAR, fetchAllRows } from "@/lib/qof/data";
+import { CURRENT_YEAR } from "@/lib/qof/data";
+import { getOrgHierarchy, getIndicatorAchievement } from "@/lib/qof/mapData";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Geographic view" };
 
@@ -13,19 +14,13 @@ export default async function MapPage({ searchParams }: { searchParams: Promise<
 
   const { data: iy } = await supabase.from("qof_indicator_year").select("*").eq("indicator_code", indicator).eq("year", CURRENT_YEAR).single();
 
-  // achievement for this indicator at every org level (paged past the 1000-row cap)
-  const ach = await fetchAllRows((from, to) =>
-    supabase.from("qof_achievement").select("ods_code,org_level,achievement_pct")
-      .eq("indicator_code", indicator).eq("year", CURRENT_YEAR)
-      .order("ods_code", { ascending: true }).range(from, to),
-  );
+  // achievement for this indicator + the org hierarchy — cached (day-long), so
+  // these ~15k rows aren't re-scanned on every map load.
+  const [ach, orgs] = await Promise.all([
+    getIndicatorAchievement(indicator, CURRENT_YEAR),
+    getOrgHierarchy(),
+  ]);
   const pctByOds = new Map((ach ?? []).map((a: any) => [a.ods_code, Number(a.achievement_pct)]));
-
-  // organisation hierarchy (paged — there are ~7,800 orgs, well past the cap)
-  const orgs = await fetchAllRows((from, to) =>
-    supabase.from("organisation").select("ods_code,name,org_level,parent_icb,parent_pcn,ons_code,list_size")
-      .order("ods_code", { ascending: true }).range(from, to),
-  );
   const icbValues: Record<string, number> = {};
   const pcnsByIcb: Record<string, any[]> = {};
   const practicesByPcn: Record<string, any[]> = {};
