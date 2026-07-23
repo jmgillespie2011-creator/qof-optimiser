@@ -93,11 +93,15 @@ node scripts/ingest-ods.mjs
 node scripts/ingest-prescribing.mjs           # or: node scripts/ingest-prescribing.mjs ezetimibe
 ```
 
-**3b. Atlas-style prescribing measures (SGLT2i, lipids, GLP-1, DOACs).** Populates the **Prescribing** page and feeds the AI QI plan, mirroring the CVD/Diabetes atlases. Pulls mean-monthly items per 1,000 patients from OpenPrescribing, rolled up to PCN/ICB/England with a peer percentile. Run `supabase/migrations/0008_prescribing.sql` first (already applied if you used the hosted DB), then:
+**3b. Atlas-style prescribing measures (SGLT2i, lipids, GLP-1, DOACs).** Populates the **Prescribing** page and feeds the AI QI plan, mirroring the CVD/Diabetes atlases. Pulls mean-monthly items per 1,000 patients from OpenPrescribing, rolled up to PCN/ICB/England with a peer percentile. Run `supabase/migrations/0008_prescribing.sql` first (already applied if you used the hosted DB).
+
+OpenPrescribing's API is behind a Cloudflare JS challenge that plain HTTP can't pass, so the ingest drives a **headless browser** (Playwright). One-time setup, then run:
 ```bash
+npm install                       # installs playwright (now in devDependencies)
+npx playwright install chromium   # one-time: downloads the headless browser (~150MB)
 node scripts/ingest-openprescribing.mjs        # add DRY=1 to preview, MONTHS=6 to shorten the window
 ```
-Note: openprescribing.net is behind Cloudflare, so run this from your own machine (not a locked-down CI box).
+The first request pays the Cloudflare-challenge cost (~10s); the rest reuse the cleared session. Run it from your own machine — a locked-down CI box will still be blocked.
 
 Once real data is loaded, remove the sample banner by deleting `<SampleBanner />` from `app/(app)/layout.tsx`.
 

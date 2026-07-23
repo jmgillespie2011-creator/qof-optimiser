@@ -44,16 +44,56 @@ const HI_STATIN = { atorvastatin: [20, 40, 80], rosuvastatin: [10, 20, 40] };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
+
+// OpenPrescribing gates its API behind a Cloudflare JS challenge that plain HTTP
+// clients (fetch/requests) cannot pass, but a real browser engine solves it
+// automatically. So we drive a headless Chromium via Playwright and read the JSON
+// straight off the page. One shared page carries the cf_clearance cookie across
+// all calls, so only the first request pays the challenge cost.
+let _page = null;
+let _browser = null;
+
+async function initFetcher() {
+  let chromium;
+  try {
+    ({ chromium } = await import("playwright"));
+  } catch {
+    console.error("\nThis ingest needs Playwright (a headless browser) to get past OpenPrescribing's Cloudflare check.\nInstall it once, then re-run:\n\n    npm install -D playwright\n    npx playwright install chromium\n    node scripts/ingest-openprescribing.mjs\n");
+    process.exit(1);
+  }
+  _browser = await chromium.launch({ headless: true });
+  const ctx = await _browser.newContext({ userAgent: UA });
+  _page = await ctx.newPage();
+}
+
+async function closeFetcher() {
+  try { await _browser?.close(); } catch { /* ignore */ }
+}
+
 async function api(path, params) {
   const qs = new URLSearchParams({ ...params, format: "json" }).toString();
+  const url = `${BASE}${path}?${qs}`;
+  let lastReason = "unknown";
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
-      const r = await fetch(`${BASE}${path}?${qs}`, { headers: { "User-Agent": "qof-optimiser/1.0", Accept: "application/json" } });
-      if (r.ok) return await r.json();
-    } catch { /* retry */ }
+      await _page.goto(url, { waitUntil: "domcontentloaded", timeout: 90000 });
+      // Cloudflare may briefly show an interstitial; poll until the body is JSON.
+      for (let i = 0; i < 20; i++) {
+        const text = await _page.evaluate(() => document.body?.innerText || "");
+        const t = text.trim();
+        if (t.startsWith("[") || t.startsWith("{")) {
+          try { return JSON.parse(t); } catch { /* still rendering */ }
+        }
+        lastReason = `non-JSON body: ${t.slice(0, 80).replace(/\s+/g, " ")}`;
+        await sleep(1500);
+      }
+    } catch (e) {
+      lastReason = `${e.name}: ${e.message}`;
+    }
     await sleep(1500 * (attempt + 1));
   }
-  throw new Error(`GET ${path} failed after retries`);
+  throw new Error(`GET ${url}\n  reason: ${lastReason}`);
 }
 
 function windowMonths(latest, n) {
@@ -142,6 +182,8 @@ function percentiles(rateByCode) {
 
 async function main() {
   console.log(`OpenPrescribing ingest — ${MONTHS}-month mean${DRY ? " (DRY RUN)" : ""}`);
+  await initFetcher();
+  console.log("  headless browser ready (getting past Cloudflare)…");
 
   // organisation hierarchy + list sizes (paged past the 1000-row cap)
   const orgs = [];
@@ -282,4 +324,6 @@ async function main() {
   console.log(`Prescribing ingest complete — ${rows.length} rows for ${period}.`);
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+main()
+  .catch((e) => { console.error(e); process.exitCode = 1; })
+  .finally(closeFetcher);
