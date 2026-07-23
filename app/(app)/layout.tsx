@@ -6,11 +6,11 @@ export const dynamic = "force-dynamic";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen">
-      <header className="border-b border-slate-200 bg-white">
+      <header data-no-print className="sticky top-0 z-40 border-b border-slate-200 bg-white/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-y-2 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-4 sm:gap-8">
-            <Link href="/dashboard" className="flex items-center gap-2 font-bold text-nhs-blue">
-              <span className="grid h-7 w-7 place-items-center rounded-md bg-nhs-blue text-sm text-white">Q</span>
+            <Link href="/dashboard" className="flex items-center gap-2 font-bold tracking-tight text-nhs-blue">
+              <span className="grid h-7 w-7 place-items-center rounded-md bg-nhs-blue text-sm font-bold text-white shadow-sm">Q</span>
               QOF Optimiser
             </Link>
             <nav className="flex gap-4 text-sm sm:gap-6">

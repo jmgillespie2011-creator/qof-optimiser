@@ -32,7 +32,7 @@ export default async function DomainsIndex() {
               {items.map((d) => {
                 const v = domains.get(d)!;
                 return (
-                  <Link key={d} href={`/domains/${d}`} className="card hover:border-nhs-blue">
+                  <Link key={d} href={`/domains/${d}`} className="card card-hover">
                     <div className="font-semibold">{v.label}</div>
                     <div className="mt-1 text-sm text-slate-500">{v.count} indicator{v.count === 1 ? "" : "s"}</div>
                     <div className="mt-2 text-xl font-bold">{gbp(v.risk)}</div>

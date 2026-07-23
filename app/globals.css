@@ -1,13 +1,48 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-:root { color-scheme: light; }
-body { @apply bg-slate-50 text-slate-900 antialiased; }
-.card { @apply rounded-xl border border-slate-200 bg-white p-5 shadow-sm; }
-.btn { @apply inline-flex items-center justify-center rounded-lg bg-nhs-blue px-4 py-2 font-medium text-white hover:bg-nhs-dark transition; }
-.btn-ghost { @apply inline-flex items-center justify-center rounded-lg border border-slate-300 px-4 py-2 font-medium text-slate-700 hover:bg-slate-100; }
-.input { @apply w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-nhs-blue focus:ring-2 focus:ring-nhs-blue/20; }
-.label { @apply mb-1 block text-sm font-medium text-slate-700; }
+
+:root {
+  color-scheme: light;
+  /* Soft, layered elevation — more refined than a flat drop shadow */
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+  --shadow-lift: 0 4px 6px -2px rgba(16, 24, 40, 0.05), 0 12px 24px -8px rgba(16, 24, 40, 0.10);
+}
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+    font-feature-settings: "cv05", "ss01";
+  }
+  /* Tighter, more editorial headings */
+  h1, h2, h3 { @apply tracking-tight text-slate-900; }
+  /* Figures line up in tables and stat tiles */
+  th, td, .tabular { font-variant-numeric: tabular-nums; }
+  /* Consistent, accessible focus ring everywhere */
+  a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible {
+    @apply outline-none ring-2 ring-nhs-blue/40 ring-offset-1 rounded;
+  }
+}
+
+@layer components {
+  .card { @apply rounded-xl border border-slate-200/80 bg-white p-5; box-shadow: var(--shadow-card); }
+  .card-hover { @apply transition hover:border-nhs-blue/40; }
+  .card-hover:hover { box-shadow: var(--shadow-lift); }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-nhs-blue px-4 py-2 text-sm font-semibold text-white transition;
+    @apply hover:bg-nhs-dark active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60;
+    box-shadow: 0 1px 2px rgba(0, 48, 135, 0.20);
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:border-slate-400 active:translate-y-px;
+  }
+  .input { @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-nhs-blue focus:ring-2 focus:ring-nhs-blue/20; }
+  .label { @apply mb-1 block text-sm font-medium text-slate-700; }
+
+  /* Small uppercase section label ("kicker") for an editorial, professional feel */
+  .kicker { @apply text-xs font-semibold uppercase tracking-[0.12em] text-nhs-blue; }
+}
 
 /* Print / Save-as-PDF: drop the app chrome and tidy cards so a QI plan prints
    as a clean document a practice can send to its ICB. */

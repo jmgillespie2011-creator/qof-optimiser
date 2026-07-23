@@ -30,8 +30,8 @@ export default function Landing() {
         {/* product preview mock */}
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-lg">
           <div className="rounded-xl bg-nhs-blue p-4 text-white">
-            <div className="text-xs opacity-90">QOF value at risk (2025/26)</div>
-            <div className="text-3xl font-bold">£18,400</div>
+            <div className="text-xs opacity-90">Estimated QOF value at risk</div>
+            <div className="text-3xl font-bold tabular-nums">£18,400</div>
           </div>
           <div className="mt-3 space-y-2">
             {[["CHOL004","34%","50%","red"],["DM036","56%","90%","amber"],["CHOL003","82%","95%","lime"]].map(([c,you,t,rc]) => (
@@ -48,11 +48,11 @@ export default function Landing() {
 
       <section className="mt-20 grid gap-5 sm:grid-cols-3">
         {[
-          ["Benchmark everywhere","Compare your achievement across England, ICB, PCN and peers for all 2025/26 indicators."],
-          ["Money, ranked","See the £ at stake per indicator using the current £225.49/point, sorted by opportunity."],
-          ["Act in one click","Copy pre-written Accurx questionnaires - ezetimibe offers, vaccination invites, smoking VBA."],
+          ["Benchmark everywhere","Compare your achievement across England, ICB, PCN and peers for every QOF indicator."],
+          ["Money, ranked","See the £ at stake per indicator at the current QOF point price, sorted by opportunity."],
+          ["Act in one click","Copy pre-written Accurx questionnaires — ezetimibe offers, vaccination invites, smoking VBA."],
         ].map(([t,d]) => (
-          <div key={t} className="card"><h3 className="font-semibold">{t}</h3><p className="mt-2 text-sm text-slate-600">{d}</p></div>
+          <div key={t} className="card card-hover"><h3 className="font-semibold">{t}</h3><p className="mt-2 text-sm text-slate-600">{d}</p></div>
         ))}
       </section>
 

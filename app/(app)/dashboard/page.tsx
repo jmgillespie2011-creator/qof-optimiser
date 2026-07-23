@@ -79,7 +79,7 @@ export default async function Dashboard() {
         <h2 className="mb-3 text-lg font-semibold">By domain</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[...byDomain.entries()].sort((a,b)=>b[1].risk-a[1].risk).map(([domain, d]) => (
-            <Link key={domain} href={`/domains/${domain}`} className="card hover:border-nhs-blue">
+            <Link key={domain} href={`/domains/${domain}`} className="card card-hover">
               <div className="text-sm text-slate-500">{d.label}</div>
               <div className="mt-1 text-2xl font-bold">{gbp(d.risk)}</div>
               <div className="mt-1 text-sm text-nhs-blue">View dashboard →</div>
