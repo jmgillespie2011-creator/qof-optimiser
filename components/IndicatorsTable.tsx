@@ -2,8 +2,9 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 type Row = {
-  indicator_code: string; domain: string; domain_label: string; title: string;
+  indicator_code: string; domain: string; domain_label: string; title: string; description: string | null;
   achievement_pct: number | null; upper_threshold: number | null; points: number; money_at_risk: number; rag: string;
+  is_register?: boolean;
 };
 const RAG_TEXT: Record<string,string> = { green: "text-nhs-green", lime: "text-lime-600", amber: "text-amber-600", red: "text-nhs-red", none: "text-slate-400" };
 export default function IndicatorsTable({ rows }: { rows: Row[] }) {
@@ -38,14 +39,14 @@ export default function IndicatorsTable({ rows }: { rows: Row[] }) {
           </thead>
           <tbody>
             {filtered.map(r => (
-              <tr key={r.indicator_code} className="border-t border-slate-100">
-                <td className="p-3"><Link href={`/domains/${r.domain}/${r.indicator_code}`} className="font-medium text-nhs-blue">{r.indicator_code}</Link></td>
-                <td className="p-3 text-slate-600">{r.title}</td>
+              <tr key={r.indicator_code} className="border-t border-slate-100 hover:bg-slate-50/60">
+                <td className="p-3"><Link href={`/domains/${r.domain}/${r.indicator_code}`} className="font-mono font-medium text-nhs-blue" title={r.description ?? undefined}>{r.indicator_code}</Link></td>
+                <td className="p-3 text-slate-600" title={r.description ?? undefined}>{r.title}</td>
                 <td className="p-3">{r.domain_label}</td>
-                <td className={`p-3 font-semibold ${RAG_TEXT[r.rag] ?? ""}`}>{r.achievement_pct ?? "—"}%</td>
-                <td className="p-3">{r.upper_threshold ?? "—"}%</td>
-                <td className="p-3">{r.points}</td>
-                <td className="p-3 font-semibold">£{r.money_at_risk.toLocaleString()}</td>
+                <td className={`p-3 font-semibold tabular-nums ${RAG_TEXT[r.rag] ?? ""}`}>{r.is_register ? <span className="text-slate-500">Register</span> : `${r.achievement_pct ?? "—"}%`}</td>
+                <td className="p-3 tabular-nums text-slate-500">{r.upper_threshold != null ? `${r.upper_threshold}%` : "—"}</td>
+                <td className="p-3 tabular-nums">{r.points}</td>
+                <td className="p-3 font-semibold tabular-nums">£{r.money_at_risk.toLocaleString()}</td>
               </tr>
             ))}
           </tbody>

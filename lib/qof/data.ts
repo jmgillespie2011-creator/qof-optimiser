@@ -36,7 +36,7 @@ export async function getPracticeContext(): Promise<PracticeContext> {
 }
 
 export type IndicatorRow = {
-  indicator_code: string; domain: string; domain_label: string; title: string; group_code: string | null;
+  indicator_code: string; domain: string; domain_label: string; title: string; description: string | null; group_code: string | null;
   achievement_pct: number | null; points: number; points_achieved: number | null;
   lower_threshold: number | null; upper_threshold: number | null; pound_per_point: number; status: string;
   cpi: number; apdf: number; money_unweighted: number; money_at_risk: number; points_short: number; rag: Rag;
@@ -101,7 +101,7 @@ export async function getIndicatorRows(practiceCode: string): Promise<IndicatorR
     } else { base = 0; money = 0; short = 0; ragv = "none"; }
 
     rows.push({
-      indicator_code: i.indicator_code, domain: i.domain, domain_label: i.domain_label, title: i.title, group_code: i.group_code ?? null,
+      indicator_code: i.indicator_code, domain: i.domain, domain_label: i.domain_label, title: i.title, description: i.description ?? null, group_code: i.group_code ?? null,
       achievement_pct: pct, points: y.points, points_achieved: achieved,
       lower_threshold: y.lower_threshold, upper_threshold: y.upper_threshold, pound_per_point: y.pound_per_point,
       status: y.status, cpi: Math.round(cpi * 100) / 100, apdf, money_unweighted: base, money_at_risk: money, points_short: short, rag: ragv,

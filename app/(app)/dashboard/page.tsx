@@ -60,7 +60,7 @@ export default async function Dashboard() {
                 const g = r.rag;
                 return (
                   <tr key={r.indicator_code} className="border-t border-slate-100 align-middle">
-                    <td className="p-3"><Link href={`/domains/${r.domain}/${r.indicator_code}`} className="font-medium text-nhs-blue">{r.indicator_code}</Link><div className="text-slate-500">{r.title}</div></td>
+                    <td className="p-3"><Link href={`/domains/${r.domain}/${r.indicator_code}`} className="font-mono font-medium text-nhs-blue" title={r.description ?? undefined}>{r.indicator_code}</Link><div className="text-slate-500">{r.title}</div></td>
                     <td className="p-3">{r.domain_label}</td>
                     <td className="p-3"><PaymentBar pct={r.achievement_pct} lower={r.lower_threshold} upper={r.upper_threshold} /></td>
                     <td className={`p-3 font-semibold ${RAG_TEXT[g]}`}>{r.is_register ? <span className="text-slate-500" title="Register / points-only indicator — no achievement %">Register</span> : `${r.achievement_pct ?? "—"}%`}</td>
