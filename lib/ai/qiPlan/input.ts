@@ -33,6 +33,18 @@ export type DomainPrevalence = {
   materially_below_expected: boolean;
 };
 
+export type PrescribingSignal = {
+  metric_key: string;
+  short: string;
+  domain_label: string;
+  unit: string; // 'items/1000' | '%'
+  qof_link: string | null;
+  practice_rate: number | null;
+  england_rate: number | null;
+  percentile: number | null; // 0-100 among practices; low = under-prescribing vs peers
+  below_england: boolean;
+};
+
 export type QiPlanInput = {
   practice: {
     name: string;
@@ -47,6 +59,7 @@ export type QiPlanInput = {
   priority_indicators: PriorityIndicator[]; // sorted by points recoverable, desc
   at_or_near_max: { indicator_code: string; indicator_name: string; current_pct: number | null }[];
   domain_prevalence: DomainPrevalence[];
+  prescribing: PrescribingSignal[]; // OpenPrescribing signals vs England (may be empty)
   interventions: Intervention[]; // filtered library the model may select from
 };
 
@@ -86,11 +99,14 @@ export async function assembleQiPlanInput(practiceCode: string): Promise<QiPlanI
     ]);
 
   const icbCode = (org as any)?.parent_icb ?? null;
-  const [{ data: icbAch }, { data: natAch }] = await Promise.all([
+  const [{ data: icbAch }, { data: natAch }, { data: rxMetrics }, { data: rxMine }, { data: rxEng }] = await Promise.all([
     icbCode
       ? supabase.from("qof_achievement").select("*").eq("year", year).eq("ods_code", icbCode)
       : Promise.resolve({ data: [] as any[] }),
     supabase.from("qof_achievement").select("*").eq("year", year).eq("ods_code", "ENG"),
+    supabase.from("rx_metric").select("*").order("sort"),
+    supabase.from("rx_value").select("metric_key,items_per_1000,percentile").eq("ods_code", practiceCode),
+    supabase.from("rx_value").select("metric_key,items_per_1000").eq("ods_code", "ENG").eq("org_level", "national"),
   ]);
 
   const yearMap = new Map((years ?? []).map((y: any) => [y.indicator_code, y]));
@@ -215,6 +231,27 @@ export async function assembleQiPlanInput(practiceCode: string): Promise<QiPlanI
     });
   }
 
+  // Prescribing signals from OpenPrescribing (empty until the ingest is run).
+  const rxMineMap = new Map((rxMine ?? []).map((r: any) => [r.metric_key, r]));
+  const rxEngMap = new Map((rxEng ?? []).map((r: any) => [r.metric_key, r.items_per_1000]));
+  const prescribing: PrescribingSignal[] = [];
+  for (const m of rxMetrics ?? []) {
+    const mine: any = rxMineMap.get(m.metric_key);
+    if (!mine || mine.items_per_1000 == null) continue; // only include measures the practice has data for
+    const eng = rxEngMap.get(m.metric_key) ?? null;
+    prescribing.push({
+      metric_key: m.metric_key,
+      short: m.short,
+      domain_label: m.domain_label,
+      unit: m.unit,
+      qof_link: m.qof_link ?? null,
+      practice_rate: mine.items_per_1000,
+      england_rate: eng,
+      percentile: mine.percentile ?? null,
+      below_england: eng != null && mine.items_per_1000 < eng,
+    });
+  }
+
   const gapCodes = priority.map((p) => p.indicator_code);
 
   return {
@@ -231,6 +268,7 @@ export async function assembleQiPlanInput(practiceCode: string): Promise<QiPlanI
     priority_indicators: priority,
     at_or_near_max: nearMax,
     domain_prevalence: domainPrev,
+    prescribing,
     interventions: filterInterventions(gapCodes),
   };
 }

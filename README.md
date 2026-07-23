@@ -93,6 +93,12 @@ node scripts/ingest-ods.mjs
 node scripts/ingest-prescribing.mjs           # or: node scripts/ingest-prescribing.mjs ezetimibe
 ```
 
+**3b. Atlas-style prescribing measures (SGLT2i, lipids, GLP-1, DOACs).** Populates the **Prescribing** page and feeds the AI QI plan, mirroring the CVD/Diabetes atlases. Pulls mean-monthly items per 1,000 patients from OpenPrescribing, rolled up to PCN/ICB/England with a peer percentile. Run `supabase/migrations/0008_prescribing.sql` first (already applied if you used the hosted DB), then:
+```bash
+node scripts/ingest-openprescribing.mjs        # add DRY=1 to preview, MONTHS=6 to shorten the window
+```
+Note: openprescribing.net is behind Cloudflare, so run this from your own machine (not a locked-down CI box).
+
 Once real data is loaded, remove the sample banner by deleting `<SampleBanner />` from `app/(app)/layout.tsx`.
 
 ## What's built (this scaffold)

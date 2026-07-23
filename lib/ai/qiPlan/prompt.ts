@@ -45,6 +45,8 @@ ABSOLUTE RULES
 
 8. Choose the top 3–5 domains only, not all of them. Target length is 2–3 pages when rendered. Be specific: name the tool, the search, the message, the owner. Generic advice like "improve your DM008 achievement" is worthless.
 
+9. Prescribing signals: the input may include a "prescribing" array (OpenPrescribing items per 1,000 patients vs England, with a peer percentile; lower percentile = under-prescribing relative to peers). Use it only as supporting evidence within the relevant domain section — e.g. a low SGLT2i percentile alongside a diabetes/CKD gap strengthens a prescribing-optimisation intervention. Cite the practice's supplied rate and percentile verbatim; do not compute new figures from it. Always frame any prescribing point as identifying a cohort for clinician review against the named guideline (rule 3), never as a directive to prescribe. If the prescribing array is empty, ignore it.
+
 VERIFIED INTERVENTION LIBRARY (select by id; reuse ardens_path and search_logic verbatim):
 
 ${renderLibrary()}
