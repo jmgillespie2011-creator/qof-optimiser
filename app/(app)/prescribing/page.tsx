@@ -45,20 +45,6 @@ export default async function PrescribingPage() {
         {period && <p className="mt-1 text-xs text-slate-400">OpenPrescribing, {period}.</p>}
       </div>
 
-      {hasData && (
-        <div className="rounded-xl border-l-4 border-nhs-blue bg-nhs-blue/5 p-4">
-          <h2 className="kicker">Why prescribing matters for QOF</h2>
-          <p className="mt-1.5 text-sm leading-relaxed text-slate-700">
-            Prescribing rates aren&apos;t QOF indicators themselves — but appropriate prescribing is often <em>how</em> a
-            clinical indicator gets met. Statins and ezetimibe underpin the cholesterol-control indicators (CHOL002/003);
-            DOACs meet the atrial-fibrillation anticoagulation indicator (AF008); and SGLT2i and GLP-1 agents support
-            diabetes and CKD management. Where your prescribing sits below your peers (a low decile), it can flag a cohort
-            of patients who might benefit — and whose treatment would also move the related QOF indicator. Read these as
-            prompts to <strong>identify patients for clinician review</strong> against the named guideline, never as a
-            direction to prescribe.
-          </p>
-        </div>
-      )}
 
       {!hasData ? (
         <div className="card">

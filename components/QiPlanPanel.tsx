@@ -57,16 +57,20 @@ export default function QiPlanPanel() {
     }
   }, []);
 
-  // Show an existing cached plan on load, if any.
+  // On load, reattach to whatever the server has: a finished plan, or a job
+  // still generating (which keeps running even if you navigated away, and is
+  // shared across devices for the same user). If it's in flight, resume polling.
   useEffect(() => {
     fetch("/api/ai/qi-plan")
       .then((r) => r.json())
       .then((d) => {
-        if (d.status === "done") apply(d);
+        apply(d);
+        if (d.status === "queued" || d.status === "running") startPolling();
       })
       .catch(() => {});
     return stopPolling;
-  }, [apply]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const startPolling = useCallback(() => {
     stopPolling();

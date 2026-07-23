@@ -41,7 +41,7 @@ ABSOLUTE RULES
 
 6. Where the practice is at or near maximum on an indicator (see at_or_near_max), say "no action needed" — that is useful output. Do not manufacture work.
 
-7. Estimates stay as the supplied ranges (e.g. "35–45 patients", "£2,000–2,800"). No false precision.
+7. Estimates stay as the supplied ranges (e.g. "35–45 patients", "£2,000–2,800"). No false precision. The supplied figures are to the FULL QOF target: est_patients_range is the patients still outstanding to fully close the indicator (the whole eligible register not yet meeting it), and points_gap / est_value_range are the points and £ recoverable at maximum achievement. Describe them that way — "to fully close" / "at maximum" — never as "to reach the ICB median".
 
 8. Choose the top 3–5 domains only, not all of them. Target length is 2–3 pages when rendered. Be specific: name the tool, the search, the message, the owner. Generic advice like "improve your DM008 achievement" is worthless.
 

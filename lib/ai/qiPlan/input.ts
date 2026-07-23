@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { CURRENT_YEAR } from "@/lib/qof/data";
-import { pointsEarned, gbp, IndicatorYear } from "@/lib/qof/calc";
+import { gbp } from "@/lib/qof/calc";
 import { filterInterventions, Intervention } from "@/lib/ai/interventions";
 
 // §1.2 — the application assembles every input and PRE-COMPUTES every number.
@@ -159,27 +159,28 @@ export async function assembleQiPlanInput(practiceCode: string): Promise<QiPlanI
       continue;
     }
 
-    // Points recoverable to ICB median.
+    const numer = a?.numerator ?? null;
+    const denom = a?.denominator ?? null;
+    const exceptions = a?.pca_exceptions ?? null;
+
+    // Points recoverable to the FULL QOF target (maximum points). Uses the
+    // publication's achieved-vs-available points directly (payment thresholds
+    // are not loaded); this also makes the plan's £ match the dashboard.
     let pointsRecoverable = 0;
-    const iy: IndicatorYear = {
-      points: pointsAvail,
-      lower_threshold: y.lower_threshold ?? null,
-      upper_threshold: y.upper_threshold ?? null,
-      pound_per_point: y.pound_per_point ?? 0,
-    };
-    if (currentPct != null && icbPct != null && icbPct > currentPct) {
-      if (y.lower_threshold != null && y.upper_threshold != null) {
-        pointsRecoverable = round1(Math.max(0, pointsEarned(icbPct, iy) - pointsEarned(currentPct, iy)));
-      } else {
-        pointsRecoverable = round1(Math.max(0, ((icbPct - currentPct) / 100) * pointsAvail));
-      }
+    if (pointsAchieved != null) {
+      pointsRecoverable = round1(Math.max(0, pointsAvail - pointsAchieved));
+    } else if (currentPct != null && icbPct != null && icbPct > currentPct) {
+      pointsRecoverable = round1(Math.max(0, ((icbPct - currentPct) / 100) * pointsAvail));
     }
 
-    // Estimated patients to close the gap to ICB median.
-    const denom = a?.denominator ?? null;
+    // Patients still outstanding to fully close the indicator — everyone in the
+    // eligible, non-excepted register not yet meeting it (numerator/denominator
+    // already exclude exception-coded patients).
     let estPatients = 0;
-    if (denom != null && currentPct != null && icbPct != null && icbPct > currentPct) {
-      estPatients = Math.max(0, (denom * (icbPct - currentPct)) / 100);
+    if (numer != null && denom != null) {
+      estPatients = Math.max(0, denom - numer);
+    } else if (denom != null && currentPct != null) {
+      estPatients = Math.max(0, (denom * (100 - currentPct)) / 100);
     }
 
     // Estimated £ value of the recoverable points (weighted, QOF way).
@@ -195,10 +196,7 @@ export async function assembleQiPlanInput(practiceCode: string): Promise<QiPlanI
     const excIcb = exceptionRate(icb);
     const exceptionOutlier = excPrac != null && excIcb != null && excPrac >= excIcb + 10;
 
-    // Register-wide (population) achievement = numerator / (denominator + exceptions):
-    // the whole eligible register, INCLUDING exception-coded patients.
-    const exceptions = a?.pca_exceptions ?? null;
-    const numer = a?.numerator ?? null;
+    // Register-wide (population) achievement = numerator / (denominator + exceptions).
     const registerWide = (numer != null && denom != null && exceptions != null && denom + exceptions > 0)
       ? round1((numer / (denom + exceptions)) * 100)
       : null;

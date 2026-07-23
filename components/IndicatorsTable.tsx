@@ -33,42 +33,43 @@ export default function IndicatorsTable({ rows }: { rows: Row[] }) {
         </select>
         <span className="ml-auto self-center text-sm text-slate-500">{filtered.length} indicators</span>
       </div>
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full min-w-[620px] text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-            <tr>
-              <th className="p-3 font-medium">Code</th>
-              <th className="p-3 font-medium">Indicator</th>
-              <th className="p-3 font-medium">Domain</th>
-              <th className="p-3 text-right font-medium">You</th>
-              <th className="p-3 text-right font-medium">Target</th>
-              <th className="p-3 text-right font-medium">Pts</th>
-              <th className="p-3 text-right font-medium">£ at risk</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(r => (
-              <tr key={r.indicator_code} className="border-t border-slate-100 hover:bg-slate-50/60">
-                <td className="p-3"><Link href={`/domains/${r.domain}/${r.indicator_code}`} className="font-mono font-medium text-nhs-blue" title={r.description ?? undefined}>{r.indicator_code}</Link></td>
-                <td className="p-3 text-slate-600" title={r.description ?? undefined}>{r.title}</td>
-                <td className="p-3 text-slate-600">{r.domain_label}</td>
-                <td className="p-3 text-right">
-                  {r.is_register ? (
-                    <span className="text-slate-500">Register</span>
-                  ) : (
-                    <span className={`inline-flex items-center gap-1.5 font-semibold tabular-nums ${RAG_TEXT[r.rag] ?? ""}`}>
-                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: RAG_HEX[r.rag] ?? "#cbd5e1" }} />
-                      {r.achievement_pct ?? "—"}%
-                    </span>
-                  )}
-                </td>
-                <td className="p-3 text-right tabular-nums text-slate-500">{r.upper_threshold != null ? `${r.upper_threshold}%` : "—"}</td>
-                <td className="p-3 text-right tabular-nums">{r.points}</td>
-                <td className="p-3 text-right font-semibold tabular-nums">£{r.money_at_risk.toLocaleString()}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        {filtered.map(r => (
+          <Link
+            key={r.indicator_code}
+            href={`/domains/${r.domain}/${r.indicator_code}`}
+            className="flex flex-col gap-3 p-4 transition hover:bg-slate-50/70 sm:flex-row sm:items-center sm:gap-4"
+          >
+            {/* code + domain */}
+            <div className="flex items-center gap-2 sm:w-40 sm:shrink-0">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: RAG_HEX[r.rag] ?? "#cbd5e1" }} />
+              <div className="min-w-0">
+                <div className="font-mono text-sm font-semibold text-nhs-blue">{r.indicator_code}</div>
+                <div className="truncate text-xs text-slate-400">{r.domain_label}</div>
+              </div>
+            </div>
+
+            {/* what it is — inline definition */}
+            <p className="min-w-0 flex-1 text-sm leading-snug text-slate-600 line-clamp-2">{r.description || r.title}</p>
+
+            {/* achievement */}
+            <div className="sm:w-24 sm:shrink-0 sm:text-right">
+              {r.is_register ? (
+                <span className="text-sm text-slate-500">Register</span>
+              ) : (
+                <span className={`text-sm font-semibold tabular-nums ${RAG_TEXT[r.rag] ?? ""}`}>{r.achievement_pct ?? "—"}%</span>
+              )}
+              <div className="text-xs text-slate-400">{r.points} pts</div>
+            </div>
+
+            {/* money */}
+            <div className="sm:w-24 sm:shrink-0 sm:text-right">
+              <div className="font-semibold tabular-nums text-slate-900">£{r.money_at_risk.toLocaleString()}</div>
+              <div className="text-xs text-slate-400">at risk</div>
+            </div>
+          </Link>
+        ))}
+        {filtered.length === 0 && <div className="p-6 text-center text-sm text-slate-500">No indicators match your search.</div>}
       </div>
     </div>
   );
