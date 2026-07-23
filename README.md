@@ -93,15 +93,14 @@ node scripts/ingest-ods.mjs
 node scripts/ingest-prescribing.mjs           # or: node scripts/ingest-prescribing.mjs ezetimibe
 ```
 
-**3b. Atlas-style prescribing measures (SGLT2i, lipids, GLP-1, DOACs).** Populates the **Prescribing** page and feeds the AI QI plan, mirroring the CVD/Diabetes atlases. Pulls mean-monthly items per 1,000 patients from OpenPrescribing, rolled up to PCN/ICB/England with a peer percentile. Run `supabase/migrations/0008_prescribing.sql` first (already applied if you used the hosted DB).
-
-OpenPrescribing's API is behind a Cloudflare JS challenge that plain HTTP can't pass, so the ingest drives a **headless browser** (Playwright). One-time setup, then run:
+**3b. Atlas-style prescribing measures (SGLT2i, lipids, GLP-1, DOACs).** Populates the **Prescribing** page and feeds the AI QI plan, mirroring the CVD/Diabetes atlases: real, **case-mix-adjusted** items per 1,000 patients with deciles, at practice/PCN/ICB/England. Run `supabase/migrations/0008_prescribing.sql` first (already applied if you used the hosted DB), then import straight from the atlas packages — instant, no network:
 ```bash
-npm install                       # installs playwright (now in devDependencies)
-npx playwright install chromium   # one-time: downloads the headless browser (~150MB)
-node scripts/ingest-openprescribing.mjs        # add DRY=1 to preview, MONTHS=6 to shorten the window
+node scripts/import-atlas-prescribing.mjs
+# optional: node scripts/import-atlas-prescribing.mjs <cvdDataDir> <dmDataDir>
 ```
-The first request pays the Cloudflare-challenge cost (~10s); the rest reuse the cleared session. Run it from your own machine — a locked-down CI box will still be blocked.
+Defaults point at the CVD & Diabetes atlas packages in `~/Downloads`. To refresh with newer figures, drop in a rebuilt atlas package and re-run.
+
+> **Why not fetch OpenPrescribing directly?** Its API now sits behind a Cloudflare challenge that blocks all scripted HTTP clients (Node `fetch`, Python `requests`, curl — tested: 403, then connection timeouts). Only a real interactive browser gets through, which is how the atlases captured the data in the first place. So we import the atlases' saved output rather than re-fetch.
 
 Once real data is loaded, remove the sample banner by deleting `<SampleBanner />` from `app/(app)/layout.tsx`.
 
