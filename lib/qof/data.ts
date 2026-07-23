@@ -40,6 +40,7 @@ export type IndicatorRow = {
   achievement_pct: number | null; points: number; points_achieved: number | null;
   lower_threshold: number | null; upper_threshold: number | null; pound_per_point: number; status: string;
   cpi: number; apdf: number; money_unweighted: number; money_at_risk: number; points_short: number; rag: Rag;
+  is_register: boolean;
 };
 
 // list-size + prevalence weighting per QOF guidance:
@@ -67,8 +68,19 @@ export async function getIndicatorRows(practiceCode: string): Promise<IndicatorR
     const y: any = yearMap.get(i.indicator_code);
     if (!y) continue;
     const a: any = achMap.get(i.indicator_code);
-    const pct = a?.achievement_pct ?? null;
-    const achieved = a?.points_achieved ?? null;
+    // No achievement row = practice has no data for this indicator (e.g. a
+    // stale sample-seed indicator). Skip rather than show a phantom £0 row.
+    if (!a) continue;
+    // Compute the percentage from numerator/denominator when the publication
+    // left it blank (a few rows arrive that way, e.g. COPD014 52/56).
+    let pct = a.achievement_pct ?? null;
+    if (pct == null && a.numerator != null && a.denominator > 0) {
+      pct = Math.round((a.numerator / a.denominator) * 1000) / 10;
+    }
+    const achieved = a.points_achieved ?? null;
+    // Register/points-only indicators carry no percentage at all — flag them so
+    // the UI shows "Register" instead of a misleading "—%".
+    const isRegister = pct == null && a.numerator == null && achieved != null;
 
     // APDF (clinical indicators only)
     let apdf = 1;
@@ -93,6 +105,7 @@ export async function getIndicatorRows(practiceCode: string): Promise<IndicatorR
       achievement_pct: pct, points: y.points, points_achieved: achieved,
       lower_threshold: y.lower_threshold, upper_threshold: y.upper_threshold, pound_per_point: y.pound_per_point,
       status: y.status, cpi: Math.round(cpi * 100) / 100, apdf, money_unweighted: base, money_at_risk: money, points_short: short, rag: ragv,
+      is_register: isRegister,
     });
   }
   return rows;

@@ -10,6 +10,12 @@ const GAP_LABEL: Record<string, string> = {
   prevalence_coding: "Prevalence / coding",
 };
 
+// Turn a machine domain key ("public_health") into a heading ("Public health").
+function prettyDomain(d: string): string {
+  const s = d.replace(/_/g, " ").trim();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 export default function QiPlanPanel() {
   const [status, setStatus] = useState<Status>("idle");
   const [plan, setPlan] = useState<QiPlan | null>(null);
@@ -145,7 +151,7 @@ export default function QiPlanPanel() {
           {plan.domain_sections.map((s) => (
             <section key={s.domain} className="card">
               <div className="flex items-baseline justify-between gap-3">
-                <h3 className="text-base font-semibold">{s.domain}</h3>
+                <h3 className="text-base font-semibold">{prettyDomain(s.domain)}</h3>
                 <span className="text-xs text-slate-400">{s.indicator_codes.join(", ")}</span>
               </div>
               <p className="mt-2 whitespace-pre-line text-slate-700">{s.analysis}</p>
