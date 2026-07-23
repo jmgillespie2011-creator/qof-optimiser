@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import type { QiPlan, PriorityRow, PlanIntervention } from "@/lib/ai/qiPlan/types";
 
 type Status = "idle" | "queued" | "running" | "done" | "error";
@@ -196,7 +197,7 @@ function PlanReport({ plan }: { plan: QiPlan }) {
               <h3 className="text-base font-semibold text-slate-900">{prettyDomain(s.domain)}</h3>
               <div className="flex flex-wrap gap-1">
                 {s.indicator_codes.map((c) => (
-                  <span key={c} className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-600">{c}</span>
+                  <Link key={c} href={`/i/${c}`} className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-600 transition hover:bg-nhs-blue/10 hover:text-nhs-blue">{c}</Link>
                 ))}
               </div>
             </div>
@@ -290,7 +291,7 @@ function PriorityRowView({ r, rank }: { r: PriorityRow; rank: number }) {
       <td className="p-3">
         <div className="flex items-baseline gap-2">
           <span className="text-xs text-slate-400">{rank}</span>
-          <span className="font-mono font-medium text-nhs-blue">{r.indicator_code}</span>
+          <Link href={`/i/${r.indicator_code}`} className="font-mono font-medium text-nhs-blue hover:underline">{r.indicator_code}</Link>
         </div>
         <div className="text-slate-500">{r.indicator_name}</div>
       </td>

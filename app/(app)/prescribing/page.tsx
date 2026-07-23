@@ -9,6 +9,26 @@ function fmt(v: number | null, unit: string): string {
   return unit === "%" ? `${v}%` : `${v}`;
 }
 
+// Per-indicator clinical rationale: why this prescribing rate matters for QOF.
+const RATIONALE: Record<string, string> = {
+  rx_sglt2i:
+    "Higher SGLT2i use in the diabetes, CKD and heart-failure cohorts is associated with better HbA1c control and renal protection — supporting the DM and CKD indicators and reducing HF admissions (NICE NG28/NG203/NG106).",
+  rx_glp1_sema:
+    "GLP-1 agonists (semaglutide) drive HbA1c and weight reduction in type 2 diabetes — associated with achieving the DM glycaemic-control (HbA1c) target indicators.",
+  rx_tirzepatide:
+    "Tirzepatide gives substantial HbA1c and weight reduction in type 2 diabetes — supports achievement of the DM HbA1c target indicators in patients not at goal.",
+  rx_statin:
+    "Statin therapy is the foundation of lipid lowering in CVD, CKD and diabetes — it underpins the cholesterol-control indicators CHOL002/003.",
+  rx_statin_hi:
+    "High-intensity statins get more patients to their LDL/non-HDL target than lower-intensity ones — a stronger quality signal than total statin volume for meeting CHOL002/003.",
+  rx_ezetimibe:
+    "Ezetimibe add-on helps patients not at cholesterol target on a statin alone reach target — directly supports CHOL002/003 achievement.",
+  rx_inclisiran:
+    "Inclisiran is an option for established CVD not at cholesterol target on other lipid therapy — supports CHOL002/003 in resistant cases.",
+  rx_doac:
+    "DOAC anticoagulation in AF patients with a CHA2DS2-VASc score of 2+ is exactly what AF008 measures — higher appropriate DOAC use directly meets the AF anticoagulation indicator.",
+};
+
 // Percentile → colour (all measures here are "higher is better").
 function pctColour(p: number | null): string {
   if (p == null) return "#94a3b8";
@@ -84,7 +104,6 @@ function MetricCard({ r }: { r: RxRow }) {
         <div className="min-w-0">
           <h3 className="font-semibold text-slate-900">{r.short}</h3>
           <p className="text-sm text-slate-500">{r.name}</p>
-          {r.qof_link && <p className="mt-1 text-xs text-nhs-blue">{r.qof_link}</p>}
         </div>
         <div className="flex items-center gap-3">
           <div className="text-right">
@@ -101,17 +120,27 @@ function MetricCard({ r }: { r: RxRow }) {
         </div>
       </div>
 
-      {/* decile bar (case-mix adjusted position vs peers, atlas red→green ramp) */}
+      {/* Why it matters for QOF (per indicator) */}
+      {RATIONALE[r.metric_key] && (
+        <p className="mt-3 border-t border-slate-100 pt-3 text-sm leading-relaxed text-slate-600">
+          <span className="font-medium text-slate-700">Why it matters: </span>{RATIONALE[r.metric_key]}
+        </p>
+      )}
+
+      {/* Decile position vs other English practices (case-mix adjusted) */}
       {r.you_decile != null && (
         <div className="mt-4">
-          <div className="relative h-2 w-full rounded-full bg-gradient-to-r from-red-200 via-amber-100 to-green-200">
+          <div className="mb-1 text-xs font-medium text-slate-600">
+            Your prescribing is in <span style={{ color: decColour(r.you_decile) }} className="font-semibold">decile {r.you_decile} of 10</span> vs all English practices
+            <span className="font-normal text-slate-400"> (case-mix adjusted{r.you_adj != null ? `, ${r.you_adj} ${r.unit === "%" ? "%" : "items/1k"}` : ""})</span>
+          </div>
+          <div className="relative h-2.5 w-full rounded-full bg-gradient-to-r from-red-300 via-amber-200 to-green-300">
             <div className="absolute top-1/2 h-4 w-1.5 -translate-y-1/2 rounded-full ring-2 ring-white"
               style={{ left: `calc(${r.you_decile * 10 - 5}% - 3px)`, background: decColour(r.you_decile) }} />
           </div>
-          <div className="mt-1 flex justify-between text-xs text-slate-400">
-            <span>Lowest prescribing</span>
-            {r.you_adj != null && <span>Case-mix adjusted: <span className="font-medium text-slate-600">{r.you_adj}</span></span>}
-            <span>Highest</span>
+          <div className="mt-1 flex justify-between text-[11px] text-slate-400">
+            <span>Bottom 10% (lowest)</span>
+            <span>Top 10% (highest)</span>
           </div>
         </div>
       )}
