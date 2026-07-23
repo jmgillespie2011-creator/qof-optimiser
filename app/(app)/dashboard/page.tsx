@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { getUserPractice, getIndicatorRows, getPracticeProfile, CURRENT_YEAR } from "@/lib/qof/data";
-import { gbp, RAG_TEXT, RAG_HEX } from "@/lib/qof/calc";
-import PaymentBar from "@/components/PaymentBar";
+import { getUserPractice, getIndicatorRows, getPracticeProfile, CURRENT_YEAR, type IndicatorRow } from "@/lib/qof/data";
+import { gbp, RAG_HEX } from "@/lib/qof/calc";
 import PracticeProfileCard from "@/components/PracticeProfile";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Dashboard" };
@@ -23,89 +22,126 @@ export default async function Dashboard() {
 
   const total = rows.reduce((s, r) => s + r.money_at_risk, 0);
   const ppp = rows[0]?.pound_per_point ?? 225.49;
-  const ranked = [...rows].sort((a, b) => b.money_at_risk - a.money_at_risk);
+  const totalPointsShort = Math.round(rows.reduce((s, r) => s + r.points_short, 0));
+  const belowTarget = rows.filter((r) => !r.is_register && r.money_at_risk > 0).length;
+
   const byDomain = new Map<string, { label: string; risk: number }>();
   for (const r of rows) {
     const cur = byDomain.get(r.domain) ?? { label: r.domain_label, risk: 0 };
     cur.risk += r.money_at_risk; byDomain.set(r.domain, cur);
   }
+  const domainsWithRisk = [...byDomain.values()].filter((d) => d.risk > 0).length;
+
+  const opps = rows.filter((r) => r.money_at_risk > 0).sort((a, b) => b.money_at_risk - a.money_at_risk);
+  const topOpps = opps.slice(0, 12);
 
   return (
-    <div className="space-y-8">
-      <div className="rounded-xl bg-nhs-blue p-5 text-white sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-sm opacity-90">Estimated QOF value at risk across all domains ({CURRENT_YEAR})</p>
-            <p className="mt-1 text-3xl font-bold sm:text-4xl">{gbp(total)}</p>
-            <p className="mt-1 text-sm opacity-90" title={`Sum across indicators of (points short) × ${gbp(ppp)}/point, weighted by list size and prevalence`}>
-              Based on current achievement vs upper payment thresholds at {gbp(ppp)}/point.
-            </p>
-          </div>
-          <Link href="/qi-plan" className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-nhs-blue hover:bg-slate-100">
-            Generate QI plan →
-          </Link>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <div className="kicker">Practice dashboard</div>
+          <h1 className="mt-1 text-2xl font-bold">{profile?.name ?? "Your practice"}</h1>
+          <p className="text-sm text-slate-500">QOF {CURRENT_YEAR} · benchmarked across every domain</p>
         </div>
+        <Link href="/qi-plan" className="btn">Generate QI plan →</Link>
+      </div>
+
+      {/* KPI strip */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="rounded-xl border border-nhs-blue/30 bg-nhs-blue/5 p-4">
+          <div className="text-xs text-slate-500">Total value at risk</div>
+          <div className="mt-1 text-2xl font-bold tabular-nums text-nhs-blue">{gbp(total)}</div>
+          <div className="text-xs text-slate-400">at {gbp(ppp)}/point, weighted</div>
+        </div>
+        <Kpi label="Points recoverable" value={totalPointsShort.toLocaleString()} />
+        <Kpi label="Indicators below target" value={String(belowTarget)} />
+        <Kpi label="Domains to focus" value={String(domainsWithRisk)} />
       </div>
 
       {profile && <PracticeProfileCard p={profile} />}
 
+      {/* Biggest opportunities — self-explanatory rows, no hover needed */}
       <section>
         <div className="mb-3 flex items-baseline justify-between gap-3">
           <h2 className="text-lg font-semibold">Biggest opportunities</h2>
-          <span className="text-sm text-slate-400">{ranked.length} indicators, ranked by £ at risk</span>
+          <Link href="/indicators" className="text-sm font-medium text-nhs-blue">View all {rows.length} indicators →</Link>
         </div>
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full min-w-[680px] text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="p-3 font-medium">Indicator</th>
-                <th className="p-3 font-medium">Domain</th>
-                <th className="w-56 p-3 font-medium">Payment band</th>
-                <th className="p-3 text-right font-medium">You</th>
-                <th className="p-3 text-right font-medium">Pts short</th>
-                <th className="p-3 text-right font-medium">£ at risk</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ranked.map((r) => {
-                const g = r.rag;
-                return (
-                  <tr key={r.indicator_code} className="border-t border-slate-100 align-middle hover:bg-slate-50/60">
-                    <td className="p-3"><Link href={`/domains/${r.domain}/${r.indicator_code}`} className="font-mono font-medium text-nhs-blue" title={r.description ?? undefined}>{r.indicator_code}</Link><div className="text-slate-500">{r.title}</div></td>
-                    <td className="p-3 text-slate-600">{r.domain_label}</td>
-                    <td className="p-3"><PaymentBar pct={r.achievement_pct} lower={r.lower_threshold} upper={r.upper_threshold} /></td>
-                    <td className="p-3 text-right">
-                      {r.is_register ? (
-                        <span className="text-slate-500" title="Register / points-only indicator — no achievement %">Register</span>
-                      ) : (
-                        <span className={`inline-flex items-center gap-1.5 font-semibold tabular-nums ${RAG_TEXT[g]}`}>
-                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: RAG_HEX[g] }} />
-                          {r.achievement_pct ?? "—"}%
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-3 text-right tabular-nums text-slate-600">{r.points_short}</td>
-                    <td className="p-3 text-right font-semibold tabular-nums">{gbp(r.money_at_risk)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        {topOpps.length === 0 ? (
+          <div className="card text-slate-600">No indicators are below their payment threshold — you&apos;re at or near maximum across the board.</div>
+        ) : (
+          <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            {topOpps.map((r) => <OppRow key={r.indicator_code} r={r} />)}
+          </div>
+        )}
       </section>
 
+      {/* By domain */}
       <section>
         <h2 className="mb-3 text-lg font-semibold">By domain</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[...byDomain.entries()].sort((a,b)=>b[1].risk-a[1].risk).map(([domain, d]) => (
+          {[...byDomain.entries()].sort((a, b) => b[1].risk - a[1].risk).map(([domain, d]) => (
             <Link key={domain} href={`/domains/${domain}`} className="card card-hover">
               <div className="text-sm text-slate-500">{d.label}</div>
-              <div className="mt-1 text-2xl font-bold">{gbp(d.risk)}</div>
-              <div className="mt-1 text-sm text-nhs-blue">View dashboard →</div>
+              <div className="mt-1 text-2xl font-bold tabular-nums">{gbp(d.risk)}</div>
+              <div className="mt-1 text-sm text-nhs-blue">View domain →</div>
             </Link>
           ))}
         </div>
       </section>
     </div>
+  );
+}
+
+function Kpi({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="text-xs text-slate-500">{label}</div>
+      <div className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{value}</div>
+    </div>
+  );
+}
+
+function OppRow({ r }: { r: IndicatorRow }) {
+  const you = r.achievement_pct;
+  const target = r.upper_threshold;
+  const colour = RAG_HEX[r.rag];
+  return (
+    <Link
+      href={`/domains/${r.domain}/${r.indicator_code}`}
+      className="flex flex-col gap-3 p-4 transition hover:bg-slate-50/70 sm:flex-row sm:items-center sm:gap-4"
+    >
+      {/* code + domain */}
+      <div className="flex items-center gap-2 sm:w-40 sm:shrink-0">
+        <span className="mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: colour }} />
+        <div className="min-w-0">
+          <div className="font-mono text-sm font-semibold text-nhs-blue">{r.indicator_code}</div>
+          <div className="truncate text-xs text-slate-400">{r.domain_label}</div>
+        </div>
+      </div>
+
+      {/* what it is — the actual definition, inline */}
+      <p className="min-w-0 flex-1 text-sm leading-snug text-slate-600 line-clamp-2">
+        {r.description || r.title}
+      </p>
+
+      {/* you vs target */}
+      <div className="sm:w-44 sm:shrink-0">
+        <div className="relative h-1.5 w-full rounded-full bg-slate-100">
+          {you != null && <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${Math.min(100, Math.max(0, you))}%`, background: colour }} />}
+          {target != null && <div className="absolute -inset-y-1 w-0.5 bg-slate-400" style={{ left: `${Math.min(100, target)}%` }} title={`Target ${target}%`} />}
+        </div>
+        <div className="mt-1 text-xs tabular-nums text-slate-500">
+          <span className="font-semibold" style={{ color: colour }}>{you != null ? `${you}%` : "—"}</span>
+          {target != null && <span className="text-slate-400"> · target {target}%</span>}
+        </div>
+      </div>
+
+      {/* money */}
+      <div className="sm:w-24 sm:shrink-0 sm:text-right">
+        <div className="font-semibold tabular-nums text-slate-900">{gbp(r.money_at_risk)}</div>
+        <div className="text-xs text-slate-400">at risk</div>
+      </div>
+    </Link>
   );
 }
