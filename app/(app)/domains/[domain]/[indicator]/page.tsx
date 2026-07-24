@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getUserPractice, getPracticeContext, getIndicatorRows, CURRENT_YEAR } from "@/lib/qof/data";
 import { gbp, RAG_TEXT } from "@/lib/qof/calc";
 import { INTERVENTIONS } from "@/lib/ai/interventions";
+import { INDICATOR_MESSAGES, fullPatientText } from "@/lib/ai/patientMessages";
 import BenchmarkBars from "@/components/BenchmarkBars";
 import CopyBlock from "@/components/CopyBlock";
 import TrendChart from "@/components/TrendChart";
@@ -42,6 +43,7 @@ export default async function IndicatorPage({ params }: { params: Promise<{ doma
   const { data: qis } = await supabase.from("qi_suggestion").select("*").eq("indicator_code", code).order("priority_weight", { ascending: false });
   // Verified library entries that explicitly cover this indicator.
   const library = INTERVENTIONS.filter((iv) => iv.indicators.includes(code));
+  const patientMsg = INDICATOR_MESSAGES[code];
 
   return (
     <div className="space-y-6">
@@ -145,16 +147,26 @@ export default async function IndicatorPage({ params }: { params: Promise<{ doma
                   <div><dt className="inline font-medium">Effort: </dt><dd className="inline">{iv.effort_estimate}</dd></div>
                   <div><dt className="inline font-medium">Expected yield: </dt><dd className="inline">{iv.expected_yield}</dd></div>
                 </dl>
-                {iv.accurx_message && (
-                  <div className="mt-3">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Copy-ready Accurx / text message</div>
-                    <div className="mt-1"><CopyBlock text={iv.accurx_message} /></div>
-                  </div>
-                )}
                 {iv.guideline_ref && <p className="mt-2 text-xs text-slate-400">Guideline: {iv.guideline_ref}</p>}
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {patientMsg && (
+        <div className="card">
+          <h2 className="font-semibold">Patient message (copy-ready)</h2>
+          <p className="mb-3 text-sm text-slate-500">
+            Tailored for this indicator — fill in the placeholders before sending via Accurx or your text system.
+          </p>
+          <CopyBlock text={fullPatientText(patientMsg)} />
+          <p className="mt-3 text-sm">
+            <span className="text-slate-500">Resource for patients: </span>
+            <a href={patientMsg.resource_url} target="_blank" rel="noopener noreferrer" className="text-nhs-blue hover:underline">
+              {patientMsg.resource_label} ↗
+            </a>
+          </p>
         </div>
       )}
     </div>
