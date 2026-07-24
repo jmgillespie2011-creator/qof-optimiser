@@ -2,6 +2,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { QiPlan, PriorityRow, PlanIntervention } from "@/lib/ai/qiPlan/types";
+import { INTERVENTIONS } from "@/lib/ai/interventions";
+import CopyBlock from "@/components/CopyBlock";
+
+// Verified copy-ready patient messages, keyed by intervention id (so the plan
+// shows the exact library text, never model-generated wording).
+const ACCURX: Record<string, string> = Object.fromEntries(
+  INTERVENTIONS.filter((i) => i.accurx_message).map((i) => [i.id, i.accurx_message as string]),
+);
 
 type Status = "idle" | "queued" | "running" | "done" | "error";
 
@@ -352,6 +360,13 @@ function InterventionCard({ iv, n }: { iv: PlanIntervention; n: number }) {
             </div>
             <div className="mt-1.5 font-mono text-xs leading-relaxed text-slate-500">{iv.identification.search_logic}</div>
           </div>
+
+          {ACCURX[iv.intervention_id] && (
+            <div className="mt-3 print:hidden">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Copy-ready Accurx / text message</div>
+              <div className="mt-1"><CopyBlock text={ACCURX[iv.intervention_id]} /></div>
+            </div>
+          )}
         </div>
       </div>
     </div>

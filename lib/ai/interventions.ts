@@ -23,6 +23,9 @@ export type Intervention = {
   effort_estimate: string;
   expected_yield: string;
   guideline_ref?: string;
+  // Copy-ready patient-facing message for Accurx/text — present only where the
+  // intervention actually contacts patients (not desk/coding/clinician-review ones).
+  accurx_message?: string;
 };
 
 export const INTERVENTIONS: Intervention[] = [
@@ -40,6 +43,8 @@ export const INTERVENTIONS: Intervention[] = [
     owner_role: "Clinical pharmacist",
     effort_estimate: "~2 sessions",
     expected_yield: "25-30% of contacted patients started or reviewed",
+    accurx_message:
+      "Hi [first name], our records suggest your heart health could benefit from a medication review. Cholesterol-lowering treatment (a statin) lowers your risk of heart attack and stroke. Please book a phone or face-to-face review here: [booking link], or reply if you'd prefer not to. Thanks, [Practice name].",
     guideline_ref: "NICE NG238",
   },
   {
@@ -88,6 +93,8 @@ export const INTERVENTIONS: Intervention[] = [
     owner_role: "Practice administrator / HCA",
     effort_estimate: "~half a session to set up",
     expected_yield: "Cheap way to close data-completeness gaps; typical response 20-35%",
+    accurx_message:
+      "Hi [first name], we don't have a recent blood pressure reading for you. If you have a home monitor, please take a reading (sit and rest 5 minutes first) and submit it here: [link]. No monitor? Reply and we'll arrange a check. Thank you, [Practice name].",
   },
   {
     id: "smoking-status-batch",
@@ -103,6 +110,8 @@ export const INTERVENTIONS: Intervention[] = [
     owner_role: "Practice administrator",
     effort_estimate: "~half a session",
     expected_yield: "Closes coding gaps; cessation uptake varies",
+    accurx_message:
+      "Hi [first name], we're updating our records. Could you let us know your current smoking status here: [link]? If you smoke and would like free help to stop, we can refer you to your local stop-smoking service. Thanks, [Practice name].",
     guideline_ref: "NICE NG209",
   },
   {
@@ -120,6 +129,8 @@ export const INTERVENTIONS: Intervention[] = [
     owner_role: "Practice administrator / practice nurse",
     effort_estimate: "~1-2 sessions to set up, then ongoing recall",
     expected_yield: "Cascade recall typically recovers 5-15% of the overdue cohort",
+    accurx_message:
+      "Hi [first name], our records show your NHS cervical screening (smear test) is due. It's a quick test that helps prevent cervical cancer. Please book here: [booking link], or reply if you've had it done elsewhere or would like to talk it through. Thank you, [Practice name].",
     guideline_ref: "NHS Cervical Screening Programme",
   },
   {
@@ -136,6 +147,8 @@ export const INTERVENTIONS: Intervention[] = [
     owner_role: "Practice administrator / nursing team",
     effort_estimate: "~1-2 sessions per campaign",
     expected_yield: "Non-responder cascade typically recovers a further 5-15%",
+    accurx_message:
+      "Hi [first name], our records show you may be due an NHS vaccination. It's a free appointment that protects against serious illness. Please book here: [booking link], or reply if you've had it elsewhere or would like more information. Thank you, [Practice name].",
   },
   {
     id: "ld-smi-health-checks",
@@ -151,6 +164,8 @@ export const INTERVENTIONS: Intervention[] = [
     owner_role: "Practice nurse / HCA",
     effort_estimate: "~2 sessions of clinic time",
     expected_yield: "Recovers under-reviewed cohort; supports several MH indicators at once",
+    accurx_message:
+      "Hi [first name], you're due your free annual health check. It's a longer appointment to check your physical health and wellbeing, and we can make adjustments to help. Please book here: [booking link], or reply and we'll help you arrange it. Thank you, [Practice name].",
   },
   {
     id: "annual-review-recall",
@@ -166,6 +181,8 @@ export const INTERVENTIONS: Intervention[] = [
     owner_role: "Practice nurse / HCA",
     effort_estimate: "Ongoing; ~1 session/week of clinic capacity",
     expected_yield: "Steady catch-up on overdue reviews across multiple indicators",
+    accurx_message:
+      "Hi [first name], you're due your annual review for your long-term condition. This helps us keep your treatment right for you. Please book here: [booking link], or reply if you need a different time or support to attend. Thanks, [Practice name].",
   },
   {
     id: "coding-template-review",
@@ -196,6 +213,8 @@ export const INTERVENTIONS: Intervention[] = [
     owner_role: "HCA, supervised by practice nurse",
     effort_estimate: "~1 clinic session/week",
     expected_yield: "Clears backlog of overdue measurements feeding several indicators",
+    accurx_message:
+      "Hi [first name], you're due a routine blood pressure and blood test. We're running extra clinic sessions to make this easy to attend. Please book a slot here: [booking link], or reply if none suit and we'll help. Thank you, [Practice name].",
   },
   {
     id: "pharmacist-review-block",

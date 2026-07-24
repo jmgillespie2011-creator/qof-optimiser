@@ -4,6 +4,7 @@ import { getUserPractice, getPracticeContext, getIndicatorRows, CURRENT_YEAR } f
 import { gbp, RAG_TEXT } from "@/lib/qof/calc";
 import { INTERVENTIONS } from "@/lib/ai/interventions";
 import BenchmarkBars from "@/components/BenchmarkBars";
+import CopyBlock from "@/components/CopyBlock";
 import TrendChart from "@/components/TrendChart";
 import PaymentBar from "@/components/PaymentBar";
 export const dynamic = "force-dynamic";
@@ -144,6 +145,12 @@ export default async function IndicatorPage({ params }: { params: Promise<{ doma
                   <div><dt className="inline font-medium">Effort: </dt><dd className="inline">{iv.effort_estimate}</dd></div>
                   <div><dt className="inline font-medium">Expected yield: </dt><dd className="inline">{iv.expected_yield}</dd></div>
                 </dl>
+                {iv.accurx_message && (
+                  <div className="mt-3">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Copy-ready Accurx / text message</div>
+                    <div className="mt-1"><CopyBlock text={iv.accurx_message} /></div>
+                  </div>
+                )}
                 {iv.guideline_ref && <p className="mt-2 text-xs text-slate-400">Guideline: {iv.guideline_ref}</p>}
               </li>
             ))}
