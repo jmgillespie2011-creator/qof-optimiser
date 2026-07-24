@@ -123,8 +123,8 @@ export async function assembleQiPlanInput(practiceCode: string): Promise<QiPlanI
       : Promise.resolve({ data: [] as any[] }),
     supabase.from("qof_achievement").select("*").eq("year", year).eq("ods_code", "ENG"),
     supabase.from("rx_metric").select("*").order("sort"),
-    supabase.from("rx_value").select("metric_key,items_per_1000,percentile").eq("ods_code", practiceCode),
-    supabase.from("rx_value").select("metric_key,items_per_1000").eq("ods_code", "ENG").eq("org_level", "national"),
+    supabase.from("rx_value").select("metric_key,items_per_1000,percentile,period").eq("ods_code", practiceCode),
+    supabase.from("rx_value").select("metric_key,items_per_1000,period").eq("ods_code", "ENG").eq("org_level", "national"),
   ]);
 
   const yearMap = new Map((years ?? []).map((y: any) => [y.indicator_code, y]));
@@ -289,8 +289,10 @@ export async function assembleQiPlanInput(practiceCode: string): Promise<QiPlanI
   }
 
   // Prescribing signals from OpenPrescribing (empty until the ingest is run).
-  const rxMineMap = new Map((rxMine ?? []).map((r: any) => [r.metric_key, r]));
-  const rxEngMap = new Map((rxEng ?? []).map((r: any) => [r.metric_key, r.items_per_1000]));
+  // Use only the most recent prescribing period (atlas vs a fresh OpenPrescribing ingest).
+  const rxLatest = (rxMine ?? []).reduce<string | null>((mx, r: any) => (r.period && (!mx || r.period > mx) ? r.period : mx), null);
+  const rxMineMap = new Map((rxMine ?? []).filter((r: any) => !rxLatest || r.period === rxLatest).map((r: any) => [r.metric_key, r]));
+  const rxEngMap = new Map((rxEng ?? []).filter((r: any) => !rxLatest || r.period === rxLatest).map((r: any) => [r.metric_key, r.items_per_1000]));
   const prescribing: PrescribingSignal[] = [];
   for (const m of rxMetrics ?? []) {
     const mine: any = rxMineMap.get(m.metric_key);

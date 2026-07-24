@@ -100,7 +100,15 @@ node scripts/import-atlas-prescribing.mjs
 ```
 Defaults point at the CVD & Diabetes atlas packages in `~/Downloads`. To refresh with newer figures, drop in a rebuilt atlas package and re-run.
 
-> **Why not fetch OpenPrescribing directly?** Its API now sits behind a Cloudflare challenge that blocks all scripted HTTP clients (Node `fetch`, Python `requests`, curl — tested: 403, then connection timeouts). Only a real interactive browser gets through, which is how the atlases captured the data in the first place. So we import the atlases' saved output rather than re-fetch.
+**3c. Fetch OpenPrescribing directly (Python).** For fresher figures than the atlas, or to refresh on your own schedule, `scripts/ingest_openprescribing.py` pulls the same 8 measures straight from OpenPrescribing and upserts `rx_value`:
+```bash
+python scripts/ingest_openprescribing.py --test   # quick connectivity check
+python scripts/ingest_openprescribing.py --dry    # fetch + compute, don't write
+python scripts/ingest_openprescribing.py          # full run (writes to DB)
+```
+Needs `pip install requests`. Reads Supabase keys from `.env.local`. Takes ~15-25 min for a 3-month window. The app always uses the most recently loaded `period`, so this cleanly supersedes an earlier atlas import.
+
+> **A note on OpenPrescribing + Cloudflare:** its API sometimes serves a Cloudflare challenge that blocks scripted clients — but this is **network/IP dependent, not universal**. Plain `requests` works from many networks (the `--test` flag tells you in seconds). If your network is blocked, use the atlas import (3b) instead, which needs no network.
 
 Once real data is loaded, remove the sample banner by deleting `<SampleBanner />` from `app/(app)/layout.tsx`.
 

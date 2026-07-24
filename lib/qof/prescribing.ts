@@ -23,19 +23,24 @@ export async function getPrescribing(practiceCode: string): Promise<{ rows: RxRo
     supabase.from("rx_metric").select("*").order("sort"),
     supabase.from("rx_value").select("metric_key,items_per_1000,percentile,adj,decile,period").eq("ods_code", practiceCode),
     icbCode
-      ? supabase.from("rx_value").select("metric_key,items_per_1000").eq("ods_code", icbCode).eq("org_level", "icb")
+      ? supabase.from("rx_value").select("metric_key,items_per_1000,period").eq("ods_code", icbCode).eq("org_level", "icb")
       : Promise.resolve({ data: [] as any[] }),
-    supabase.from("rx_value").select("metric_key,items_per_1000").eq("ods_code", "ENG").eq("org_level", "national"),
+    supabase.from("rx_value").select("metric_key,items_per_1000,period").eq("ods_code", "ENG").eq("org_level", "national"),
   ]);
 
-  const mineMap = new Map((mine ?? []).map((r: any) => [r.metric_key, r]));
-  const icbMap = new Map((icb ?? []).map((r: any) => [r.metric_key, r.items_per_1000]));
-  const engMap = new Map((eng ?? []).map((r: any) => [r.metric_key, r.items_per_1000]));
+  // If more than one dataset has been loaded (e.g. atlas + a fresh OpenPrescribing
+  // ingest), use only the most recent period so figures don't mix.
+  const latestPeriod = (rows: any[] | null) =>
+    (rows ?? []).reduce<string | null>((m, r) => (r.period && (!m || r.period > m) ? r.period : m), null);
+  const period = latestPeriod(mine);
+  const only = (rows: any[] | null) => (rows ?? []).filter((r) => !period || r.period === period);
 
-  let period: string | null = null;
+  const mineMap = new Map(only(mine).map((r: any) => [r.metric_key, r]));
+  const icbMap = new Map(only(icb).map((r: any) => [r.metric_key, r.items_per_1000]));
+  const engMap = new Map(only(eng).map((r: any) => [r.metric_key, r.items_per_1000]));
+
   const rows: RxRow[] = (metrics ?? []).map((m: any) => {
     const you: any = mineMap.get(m.metric_key);
-    if (you?.period) period = you.period;
     return {
       ...m,
       period: you?.period ?? null,
