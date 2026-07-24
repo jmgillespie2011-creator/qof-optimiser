@@ -28,16 +28,27 @@ export async function getPrescribing(practiceCode: string): Promise<{ rows: RxRo
     supabase.from("rx_value").select("metric_key,items_per_1000,period").eq("ods_code", "ENG").eq("org_level", "national"),
   ]);
 
-  // If more than one dataset has been loaded (e.g. atlas + a fresh OpenPrescribing
-  // ingest), use only the most recent period so figures don't mix.
-  const latestPeriod = (rows: any[] | null) =>
-    (rows ?? []).reduce<string | null>((m, r) => (r.period && (!m || r.period > m) ? r.period : m), null);
-  const period = latestPeriod(mine);
-  const only = (rows: any[] | null) => (rows ?? []).filter((r) => !period || r.period === period);
-
-  const mineMap = new Map(only(mine).map((r: any) => [r.metric_key, r]));
-  const icbMap = new Map(only(icb).map((r: any) => [r.metric_key, r.items_per_1000]));
-  const engMap = new Map(only(eng).map((r: any) => [r.metric_key, r.items_per_1000]));
+  // Multiple datasets can be loaded (atlas + OpenPrescribing ingests) covering
+  // different measures. Pick the freshest row PER measure rather than filtering
+  // the whole page to one period — a fresh OpenPrescribing ingest supersedes the
+  // atlas for the same measure, but complementary measures still show.
+  const rank = (p?: string | null) => (p && p.includes("atlas") ? 0 : 1); // atlas is the fallback
+  const bestByMetric = (rows: any[] | null) => {
+    const m = new Map<string, any>();
+    for (const r of rows ?? []) {
+      const cur = m.get(r.metric_key);
+      const better = !cur || rank(r.period) > rank(cur.period) ||
+        (rank(r.period) === rank(cur.period) && (r.period ?? "") > (cur.period ?? ""));
+      if (better) m.set(r.metric_key, r);
+    }
+    return m;
+  };
+  const mineMap = bestByMetric(mine);
+  const icbBest = bestByMetric(icb);
+  const engBest = bestByMetric(eng);
+  const icbMap = new Map([...icbBest].map(([k, r]) => [k, r.items_per_1000]));
+  const engMap = new Map([...engBest].map(([k, r]) => [k, r.items_per_1000]));
+  const period = [...mineMap.values()].map((r) => r.period).find((p) => p && !p.includes("atlas")) ?? null;
 
   const rows: RxRow[] = (metrics ?? []).map((m: any) => {
     const you: any = mineMap.get(m.metric_key);

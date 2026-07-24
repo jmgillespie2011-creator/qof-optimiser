@@ -289,10 +289,20 @@ export async function assembleQiPlanInput(practiceCode: string): Promise<QiPlanI
   }
 
   // Prescribing signals from OpenPrescribing (empty until the ingest is run).
-  // Use only the most recent prescribing period (atlas vs a fresh OpenPrescribing ingest).
-  const rxLatest = (rxMine ?? []).reduce<string | null>((mx, r: any) => (r.period && (!mx || r.period > mx) ? r.period : mx), null);
-  const rxMineMap = new Map((rxMine ?? []).filter((r: any) => !rxLatest || r.period === rxLatest).map((r: any) => [r.metric_key, r]));
-  const rxEngMap = new Map((rxEng ?? []).filter((r: any) => !rxLatest || r.period === rxLatest).map((r: any) => [r.metric_key, r.items_per_1000]));
+  // Pick the freshest row PER measure across loaded datasets (atlas is the
+  // fallback; a fresh OpenPrescribing ingest supersedes it for that measure).
+  const rxRank = (p?: string | null) => (p && p.includes("atlas") ? 0 : 1);
+  const rxBest = (rows: any[] | null) => {
+    const m = new Map<string, any>();
+    for (const r of rows ?? []) {
+      const cur = m.get(r.metric_key);
+      if (!cur || rxRank(r.period) > rxRank(cur.period) ||
+          (rxRank(r.period) === rxRank(cur.period) && (r.period ?? "") > (cur.period ?? ""))) m.set(r.metric_key, r);
+    }
+    return m;
+  };
+  const rxMineMap = rxBest(rxMine);
+  const rxEngMap = new Map([...rxBest(rxEng)].map(([k, r]) => [k, r.items_per_1000]));
   const prescribing: PrescribingSignal[] = [];
   for (const m of rxMetrics ?? []) {
     const mine: any = rxMineMap.get(m.metric_key);
