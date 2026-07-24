@@ -35,6 +35,21 @@ export type DomainPrevalence = {
   materially_below_expected: boolean;
 };
 
+// An indicator at/near maximum QOF points where the practice still trails its
+// peers once exception-coded patients are counted back in — clinical excellence,
+// not payment.
+export type ClinicalExcellenceGap = {
+  indicator_code: string;
+  indicator_name: string;
+  domain_label: string;
+  reported_pct: number | null;          // QOF payment rate (excludes exceptions)
+  register_wide_pct: number | null;     // whole register (includes exceptions)
+  icb_register_wide_pct: number | null;
+  national_register_wide_pct: number | null;
+  exceptions: number | null;
+  patients_outstanding: number | null;
+};
+
 export type PrescribingSignal = {
   metric_key: string;
   short: string;
@@ -60,6 +75,7 @@ export type QiPlanInput = {
   qof_year: string;
   priority_indicators: PriorityIndicator[]; // sorted by points recoverable, desc
   at_or_near_max: { indicator_code: string; indicator_name: string; current_pct: number | null }[];
+  clinical_excellence_gaps: ClinicalExcellenceGap[]; // at QOF max but trailing peers on the whole register
   domain_prevalence: DomainPrevalence[];
   prescribing: PrescribingSignal[]; // OpenPrescribing signals vs England (may be empty)
   interventions: Intervention[]; // filtered library the model may select from
@@ -130,8 +146,17 @@ export async function assembleQiPlanInput(practiceCode: string): Promise<QiPlanI
     return round1((exc / (denom + exc)) * 100);
   }
 
+  // Achievement across the WHOLE register (includes exception-coded patients).
+  function registerWidePct(row: any): number | null {
+    if (!row) return null;
+    const n = row.numerator ?? null, d = row.denominator ?? null, e = row.pca_exceptions ?? null;
+    if (n == null || d == null || e == null || d + e <= 0) return null;
+    return round1((n / (d + e)) * 100);
+  }
+
   const priority: PriorityIndicator[] = [];
   const nearMax: QiPlanInput["at_or_near_max"] = [];
+  const clinicalExcellence: ClinicalExcellenceGap[] = [];
 
   for (const i of inds ?? []) {
     const y: any = yearMap.get(i.indicator_code);
@@ -149,13 +174,35 @@ export async function assembleQiPlanInput(practiceCode: string): Promise<QiPlanI
     const pointsAvail = y.points ?? 0;
     const pointsAchieved = a?.points_achieved ?? null;
 
-    // At or near max? "No action needed" is useful output (§1.3).
-    if (pointsAchieved != null && pointsAvail > 0 && pointsAchieved / pointsAvail >= 0.95) {
-      nearMax.push({ indicator_code: i.indicator_code, indicator_name: i.title, current_pct: currentPct });
-      continue;
-    }
-    if (pointsAchieved == null && currentPct != null && y.upper_threshold != null && currentPct >= y.upper_threshold) {
-      nearMax.push({ indicator_code: i.indicator_code, indicator_name: i.title, current_pct: currentPct });
+    // Clinical-excellence lens: even at maximum QOF points, a practice can sit
+    // well below its peers once exception-coded patients are counted back in.
+    // Those patients are real unmet need, so flag them rather than dropping the
+    // indicator as "no action needed".
+    const regPrac = registerWidePct(a);
+    const regIcb = registerWidePct(icb);
+    const regNat = registerWidePct(nat);
+    const atMax =
+      (pointsAchieved != null && pointsAvail > 0 && pointsAchieved / pointsAvail >= 0.95) ||
+      (pointsAchieved == null && currentPct != null && y.upper_threshold != null && currentPct >= y.upper_threshold);
+
+    if (atMax) {
+      const peer = regIcb ?? regNat;
+      if (regPrac != null && peer != null && peer - regPrac >= 5) {
+        clinicalExcellence.push({
+          indicator_code: i.indicator_code,
+          indicator_name: i.title,
+          domain_label: i.domain_label,
+          reported_pct: currentPct,
+          register_wide_pct: regPrac,
+          icb_register_wide_pct: regIcb,
+          national_register_wide_pct: regNat,
+          exceptions: a?.pca_exceptions ?? null,
+          patients_outstanding:
+            a?.numerator != null && a?.denominator != null ? Math.max(0, a.denominator - a.numerator) : null,
+        });
+      } else {
+        nearMax.push({ indicator_code: i.indicator_code, indicator_name: i.title, current_pct: currentPct });
+      }
       continue;
     }
 
@@ -277,6 +324,9 @@ export async function assembleQiPlanInput(practiceCode: string): Promise<QiPlanI
     qof_year: year,
     priority_indicators: priority,
     at_or_near_max: nearMax,
+    clinical_excellence_gaps: clinicalExcellence.sort(
+      (a, b) => (b.patients_outstanding ?? 0) - (a.patients_outstanding ?? 0),
+    ),
     domain_prevalence: domainPrev,
     prescribing,
     interventions: filterInterventions(gapCodes),

@@ -220,6 +220,27 @@ function PlanReport({ plan }: { plan: QiPlan }) {
         </section>
       ))}
 
+      {/* Clinical excellence — beyond the points */}
+      {plan.clinical_excellence?.length > 0 && (
+        <section>
+          <SectionHeading title="Clinical excellence — beyond the points" sub="At maximum QOF points, but still behind peers once exception-coded patients are counted back in. No extra points here — this is about patients who may still be missed." />
+          <div className="space-y-3">
+            {plan.clinical_excellence.map((c, i) => (
+              <div key={i} className="rounded-xl border-l-4 border-nhs-green bg-white p-4 shadow-sm">
+                <div className="flex flex-wrap items-baseline gap-2">
+                  <Link href={`/i/${c.indicator_code}`} className="font-mono text-sm font-semibold text-nhs-blue hover:underline">{c.indicator_code}</Link>
+                  <span className="text-sm text-slate-500">{c.indicator_name}</span>
+                </div>
+                <p className="mt-2 text-sm leading-relaxed text-slate-700">{c.finding}</p>
+                <p className="mt-2 border-t border-slate-100 pt-2 text-sm text-slate-700">
+                  <span className="font-medium text-nhs-green">Action: </span>{c.action}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Cross-cutting themes */}
       {plan.cross_cutting_themes.length > 0 && (
         <section>

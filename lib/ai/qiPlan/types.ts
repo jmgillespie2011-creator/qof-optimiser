@@ -33,10 +33,20 @@ export type DomainSection = {
   review_checkpoint: string;
 };
 
+// Indicators at maximum QOF points where the practice still trails peers once
+// exception-coded patients are counted back in — clinical excellence, not payment.
+export type ClinicalExcellenceItem = {
+  indicator_code: string;
+  indicator_name: string;
+  finding: string;
+  action: string;
+};
+
 export type QiPlan = {
   position_summary: string;
   priority_table: PriorityRow[];
   domain_sections: DomainSection[];
+  clinical_excellence: ClinicalExcellenceItem[];
   cross_cutting_themes: { theme: string; evidence: string; implication: string }[];
   next_steps: { action: string; owner_role: string; timeframe: string }[];
   footer?: string; // added by application code after generation (§0.6)
@@ -47,7 +57,7 @@ const nullableNumber = { type: ["number", "null"] };
 export const QI_PLAN_SCHEMA: Record<string, unknown> = {
   type: "object",
   additionalProperties: false,
-  required: ["position_summary", "priority_table", "domain_sections", "cross_cutting_themes", "next_steps"],
+  required: ["position_summary", "priority_table", "domain_sections", "clinical_excellence", "cross_cutting_themes", "next_steps"],
   properties: {
     position_summary: { type: "string" },
     priority_table: {
@@ -101,6 +111,20 @@ export const QI_PLAN_SCHEMA: Record<string, unknown> = {
             },
           },
           review_checkpoint: { type: "string" },
+        },
+      },
+    },
+    clinical_excellence: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["indicator_code", "indicator_name", "finding", "action"],
+        properties: {
+          indicator_code: { type: "string" },
+          indicator_name: { type: "string" },
+          finding: { type: "string" },
+          action: { type: "string" },
         },
       },
     },
