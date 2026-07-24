@@ -40,6 +40,14 @@ MEASURES = {
 STATIN_CHEMS = ["0212000B0", "0212000AA", "0212000Y0", "0212000X0", "0212000M0"]  # ator, rosu, simva, prava, fluva
 HI_STATINS = {"0212000B0": ["20mg", "40mg", "80mg"], "0212000AA": ["10mg", "20mg", "40mg"]}  # atorvastatin, rosuvastatin
 
+# Ratio (%) measures: numerator items / denominator items * 100 (higher = better).
+# rx_doac_anticoag: DOACs as a share of oral anticoagulants (DOAC vs warfarin).
+DOAC_CODES = ["0208020Z0", "0208020Y0", "0208020AA", "0208020X0"]  # apixaban, rivaroxaban, edoxaban, dabigatran
+WARFARIN_CODES = ["0208020V0"]  # warfarin sodium
+# rx_metformin_mr: modified-release metformin as a share of all metformin.
+METFORMIN_CHEM = "0601022B0"
+MR_NAME_HINTS = ["m/r", "modified", " sr ", " sr", "prolonged", "xr", " mr "]  # MR presentation name markers
+
 
 def api_get(path, params=None, retries=3):
     params = dict(params or {}); params["format"] = "json"
@@ -205,8 +213,65 @@ def main():
             hi[p] = hi.get(p, 0) + items
     print(f"  rx_statin_hi     {len(hi)} practices (high-intensity presentations)\n")
 
+    # ratio (%) measures: numerator group vs a denominator group
+    warfarin = {}
+    for c in WARFARIN_CODES:
+        for p, items in mean_items_by_practice(c, months).items():
+            warfarin[p] = warfarin.get(p, 0) + items
+    metformin_all = mean_items_by_practice(METFORMIN_CHEM, months)
+    mr_codes = [it["id"] for it in (api_get("/bnf_code/", {"q": METFORMIN_CHEM}) or [])
+                if len(it.get("id", "")) == 15 and it["id"].startswith(METFORMIN_CHEM)
+                and any(h in (" " + (it.get("name", "").lower()) + " ") for h in MR_NAME_HINTS)]
+    metformin_mr = {}
+    for c in mr_codes:
+        for p, items in mean_items_by_practice(c, months).items():
+            metformin_mr[p] = metformin_mr.get(p, 0) + items
+    print(f"  rx_doac_anticoag warfarin from {len(warfarin)} practices")
+    print(f"  rx_metformin_mr  {len(mr_codes)} MR presentations, {len(metformin_mr)} practices\n")
+
     # ---- 3. build rows (practice + rollups + percentile + derived decile) ----
     rows = []
+
+    def add_ratio(metric_key, num_by, den_by):
+        """A % measure = numerator items / denominator items * 100 (higher = better)."""
+        def rate_for(codes_num, codes_den):  # helper on aggregated dicts
+            pass
+        # practice
+        prate, praw = {}, {}
+        for p in practices:
+            c = p["ods_code"]; d = den_by.get(c, 0)
+            praw[c] = num_by.get(c, 0)
+            prate[c] = round(num_by.get(c, 0) / d * 1000) / 10 if d > 0 else None
+        pc = percentiles(prate)
+        for p in practices:
+            c = p["ods_code"]
+            if prate[c] is None:
+                continue
+            rows.append({"ods_code": c, "org_level": "practice", "metric_key": metric_key, "period": period,
+                         "raw_items": praw[c], "items_per_1000": prate[c],
+                         "percentile": pc[c], "decile": min(10, max(1, pc[c] // 10 + 1))})
+        # rollups + england (list-weighted by summing num/den items)
+        for level, parent in (("pcn", pcn_of), ("icb", icb_of)):
+            num, den = {}, {}
+            for p in practices:
+                c = p["ods_code"]; par = parent.get(c)
+                if not par:
+                    continue
+                num[par] = num.get(par, 0) + num_by.get(c, 0)
+                den[par] = den.get(par, 0) + den_by.get(c, 0)
+            rate = {par: (round(num[par] / den[par] * 1000) / 10 if den[par] > 0 else None) for par in num}
+            lp = percentiles(rate)
+            for par, rv in rate.items():
+                if rv is None:
+                    continue
+                rows.append({"ods_code": par, "org_level": level, "metric_key": metric_key, "period": period,
+                             "raw_items": num[par], "items_per_1000": rv,
+                             "percentile": lp[par], "decile": min(10, max(1, lp[par] // 10 + 1))})
+        tn = sum(num_by.get(p["ods_code"], 0) for p in practices)
+        td = sum(den_by.get(p["ods_code"], 0) for p in practices)
+        if td > 0:
+            rows.append({"ods_code": "ENG", "org_level": "national", "metric_key": metric_key, "period": period,
+                         "raw_items": tn, "items_per_1000": round(tn / td * 1000) / 10, "percentile": 50, "decile": 5})
 
     def add_level(metric_key, is_share, prate, praw):
         pct = percentiles(prate)
@@ -275,6 +340,11 @@ def main():
     srate = {p["ods_code"]: (round(hi.get(p["ods_code"], 0) / statin[p["ods_code"]] * 1000) / 10
                              if statin.get(p["ods_code"]) else None) for p in practices}
     add_level("rx_statin_hi", True, srate, hi)
+
+    # ratio (%) measures — higher is better
+    doac_total = raw["rx_doac"]  # already summed DOAC items
+    add_ratio("rx_doac_anticoag", doac_total, {p["ods_code"]: doac_total.get(p["ods_code"], 0) + warfarin.get(p["ods_code"], 0) for p in practices})
+    add_ratio("rx_metformin_mr", metformin_mr, metformin_all)
 
     print(f"Built {len(rows)} rows.")
     if DRY:

@@ -9,6 +9,13 @@ function fmt(v: number | null, unit: string): string {
   return unit === "%" ? `${v}%` : `${v}`;
 }
 
+// Sublabel for share (%) measures — the denominator group.
+const SHARE_OF: Record<string, string> = {
+  rx_statin_hi: "of all statins",
+  rx_metformin_mr: "of all metformin",
+  rx_doac_anticoag: "of oral anticoagulants",
+};
+
 // Per-indicator clinical rationale: why this prescribing rate matters for QOF.
 const RATIONALE: Record<string, string> = {
   rx_sglt2i:
@@ -27,6 +34,10 @@ const RATIONALE: Record<string, string> = {
     "Inclisiran is an option for established CVD not at cholesterol target on other lipid therapy — supports CHOL002/003 in resistant cases.",
   rx_doac:
     "DOAC anticoagulation in AF patients with a CHA2DS2-VASc score of 2+ is exactly what AF008 measures — higher appropriate DOAC use directly meets the AF anticoagulation indicator.",
+  rx_doac_anticoag:
+    "The share of oral anticoagulation given as a DOAC rather than warfarin. DOACs are first-line for most AF patients (no INR monitoring, fewer interactions) — a higher share reflects modern, guideline-concordant anticoagulation (AF008).",
+  rx_metformin_mr:
+    "Modified-release metformin as a share of all metformin. Updated NICE NG28 (Feb 2026) recommends MR first-line — similar efficacy to standard-release with fewer GI side-effects and better adherence, supporting the diabetes indicators.",
 };
 
 // Percentile → colour (all measures here are "higher is better").
@@ -108,7 +119,7 @@ function MetricCard({ r }: { r: RxRow }) {
         <div className="flex items-center gap-3">
           <div className="text-right">
             <div className="text-2xl font-bold text-slate-900">{fmt(r.you, r.unit)}</div>
-            <div className="text-xs text-slate-400">{r.unit === "%" ? "of statins" : "items / 1,000 patients"}</div>
+            <div className="text-xs text-slate-400">{r.unit === "%" ? (SHARE_OF[r.metric_key] ?? "share") : "items / 1,000 patients"}</div>
           </div>
           {r.you_decile != null && (
             <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg text-white"
