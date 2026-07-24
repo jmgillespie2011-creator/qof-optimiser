@@ -14,6 +14,8 @@ const SHARE_OF: Record<string, string> = {
   rx_statin_hi: "of all statins",
   rx_metformin_mr: "of all metformin",
   rx_doac_anticoag: "of oral anticoagulants",
+  rx_saba_ics: "of reliever + preventer",
+  rx_env_inhalers: "of all inhalers",
 };
 
 // Per-indicator clinical rationale: why this prescribing rate matters for QOF.
@@ -38,6 +40,12 @@ const RATIONALE: Record<string, string> = {
     "The share of oral anticoagulation given as a DOAC rather than warfarin. DOACs are first-line for most AF patients (no INR monitoring, fewer interactions) — a higher share reflects modern, guideline-concordant anticoagulation (AF008).",
   rx_metformin_mr:
     "Modified-release metformin as a share of all metformin. Updated NICE NG28 (Feb 2026) recommends MR first-line — similar efficacy to standard-release with fewer GI side-effects and better adherence, supporting the diabetes indicators.",
+  rx_saba_ics:
+    "Reliever (SABA) inhalers as a dose-adjusted share of reliever + preventer prescribing. High reliever reliance is a red flag for poorly controlled asthma — the BTS/NICE/SIGN guidance targets over-reliance. Lower is better; identify patients on frequent SABA for asthma review.",
+  rx_env_inhalers:
+    "Metered-dose inhalers (MDIs) as a share of all inhalers. MDIs have a far higher carbon footprint than dry-powder inhalers; where clinically suitable, switching reduces emissions (an NHS net-zero priority). Lower is better.",
+  rx_opioid_highdose:
+    "High-dose opioid prescribing per 1,000 patients (OpenPrescribing's oral morphine-equivalence measure). A patient-safety signal — high-dose opioids carry dependence and harm risk with limited benefit in chronic non-cancer pain. Lower is better; review high-dose patients.",
 };
 
 // Percentile → colour (all measures here are "higher is better").
@@ -108,7 +116,12 @@ export default async function PrescribingPage() {
 }
 
 function MetricCard({ r }: { r: RxRow }) {
-  const belowBench = r.you != null && r.england != null && r.you < r.england;
+  // Direction-aware: for "lower is better" measures (SABA reliance, MDI %,
+  // high-dose opioids) being below England is good, not bad.
+  const cmp = r.you != null && r.england != null
+    ? (r.higher_is_better ? Math.sign(r.you - r.england) : Math.sign(r.england - r.you))
+    : 0; // >0 better than England, <0 worse
+  const dirWord = r.higher_is_better ? (r.you! < r.england! ? "below" : "above") : (r.you! > r.england! ? "above" : "below");
   return (
     <div className="card">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -123,7 +136,7 @@ function MetricCard({ r }: { r: RxRow }) {
           </div>
           {r.you_decile != null && (
             <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg text-white"
-              style={{ background: decColour(r.you_decile) }} title="Case-mix adjusted decile (10 = highest prescribing vs peers)">
+              style={{ background: decColour(r.you_decile) }} title="Quality decile vs peers (10 = best)">
               <span className="text-lg font-bold leading-none">{r.you_decile}</span>
               <span className="text-[9px] leading-none opacity-90">/10</span>
             </div>
@@ -142,16 +155,16 @@ function MetricCard({ r }: { r: RxRow }) {
       {r.you_decile != null && (
         <div className="mt-4">
           <div className="mb-1 text-xs font-medium text-slate-600">
-            Your prescribing is in <span style={{ color: decColour(r.you_decile) }} className="font-semibold">decile {r.you_decile} of 10</span> vs all English practices
-            <span className="font-normal text-slate-400"> (case-mix adjusted{r.you_adj != null ? `, ${r.you_adj} ${r.unit === "%" ? "%" : "items/1k"}` : ""})</span>
+            You&apos;re in <span style={{ color: decColour(r.you_decile) }} className="font-semibold">decile {r.you_decile} of 10</span> vs all English practices
+            <span className="font-normal text-slate-400"> (10 = best{r.you_adj != null ? `; case-mix adjusted ${r.you_adj}` : ""})</span>
           </div>
           <div className="relative h-2.5 w-full rounded-full bg-gradient-to-r from-red-300 via-amber-200 to-green-300">
             <div className="absolute top-1/2 h-4 w-1.5 -translate-y-1/2 rounded-full ring-2 ring-white"
               style={{ left: `calc(${r.you_decile * 10 - 5}% - 3px)`, background: decColour(r.you_decile) }} />
           </div>
           <div className="mt-1 flex justify-between text-[11px] text-slate-400">
-            <span>Bottom 10% (lowest)</span>
-            <span>Top 10% (highest)</span>
+            <span>Poorest vs peers</span>
+            <span>Best vs peers</span>
           </div>
         </div>
       )}
@@ -159,7 +172,8 @@ function MetricCard({ r }: { r: RxRow }) {
       <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 border-t border-slate-100 pt-3 text-sm">
         <span className="text-slate-500">ICB: <span className="font-medium text-slate-700">{fmt(r.icb, r.unit)}</span></span>
         <span className="text-slate-500">England: <span className="font-medium text-slate-700">{fmt(r.england, r.unit)}</span></span>
-        {belowBench && <span className="font-medium text-amber-600">Below the England average</span>}
+        {cmp < 0 && <span className="font-medium text-amber-600">{dirWord === "below" ? "Below" : "Above"} the England average</span>}
+        {cmp > 0 && <span className="font-medium text-nhs-green">Better than the England average</span>}
       </div>
     </div>
   );

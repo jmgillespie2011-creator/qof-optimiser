@@ -110,6 +110,13 @@ Needs `pip install requests`. Reads Supabase keys from `.env.local`. Takes ~15-2
 
 > **A note on OpenPrescribing + Cloudflare:** its API sometimes serves a Cloudflare challenge that blocks scripted clients — but this is **network/IP dependent, not universal**. Plain `requests` works from many networks (the `--test` flag tells you in seconds). If your network is blocked, use the atlas import (3b) instead, which needs no network.
 
+**3d. OpenPrescribing validated *quality* measures (SABA:ICS, inhaler carbon, high-dose opioids).** Some measures depend on OpenPrescribing's dm+d enrichment (form/route, dose equivalence) and can't be computed from BNF codes — so `scripts/ingest_op_measures.py` pulls their *own* per-practice values. This is a slow, one-off overnight run (~1 call per practice per measure) but **resumable** (re-run to continue):
+```bash
+python scripts/ingest_op_measures.py --limit 20 --dry   # verify on 20 practices
+python scripts/ingest_op_measures.py                     # full run (resumable)
+```
+These are "lower is better" measures; the ingest stores a pre-inverted quality decile (10 = best) so the app colours them correctly.
+
 Once real data is loaded, remove the sample banner by deleting `<SampleBanner />` from `app/(app)/layout.tsx`.
 
 ## What's built (this scaffold)
